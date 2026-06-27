@@ -1,0 +1,163 @@
+---
+title: "Rate Limits"
+description: "Default rate limit thresholds, how limits are applied per API key, and strategies for staying within them."
+---
+
+The Hyparrow API enforces rate limits to protect service availability. When you exceed your limit, the API returns a `429 Too Many Requests` response and stops processing further requests until the current window resets.
+
+---
+
+## Default limits
+
+| Setting | Value |
+|---|---|
+| Window duration | 15 minutes (900 seconds) |
+| Requests per window | 100 |
+| Limit scope | Per API key (or per IP address for unauthenticated requests) |
+
+These defaults apply to all API keys. Individual API keys may have a custom `rateLimit` configured at creation time — contact support if you need a higher limit.
+
+---
+
+## How limits are applied
+
+The rate limiter counts requests within a sliding window. Each API key gets its own counter:
+
+- **Authenticated requests** (using `X-API-Key` / `X-API-Secret`): the limit is tracked per API key. Multiple servers sharing the same credentials share a single counter.
+- **Unauthenticated requests**: the limit falls back to tracking by client IP address.
+
+The counter resets after the 15-minute window expires. Requests at exactly the limit boundary (`current >= limit`) are rejected before the counter increments, so the 101st request in a window always fails.
+
+---
+
+## 429 response
+
+When you exceed the limit, you receive:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+```
+
+```json
+{
+  "success": false,
+  "error": "Too many requests, please try again later"
+}
+```
+
+<Note>
+  The API does not currently return `Retry-After` or `X-RateLimit-*` headers. To determine when the window resets, track the timestamp of your first request in the current window and add 900 seconds.
+</Note>
+
+---
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Cache read responses" icon="database">
+    Endpoints like `/api/v1/bills/categories`, `/api/v1/bills/services`, and `/api/v1/transfers/banks` return data that changes infrequently. Cache these responses locally for at least 15 minutes to avoid burning your quota on repeated lookups.
+  </Card>
+  <Card title="Exponential backoff on 429" icon="rotate">
+    When you receive a `429`, wait before retrying. Start with a 1-second delay and double it on each subsequent `429`, up to a maximum of 60 seconds. Add random jitter to avoid synchronized retries across multiple instances.
+  </Card>
+  <Card title="Batch status checks" icon="list-check">
+    If you need to poll for transaction status, use a single request per transaction at increasing intervals rather than polling every few seconds. Consider webhook notifications instead of polling where possible.
+  </Card>
+  <Card title="Separate keys per environment" icon="key">
+    Use different API keys for production and staging. This keeps limits independent and prevents test traffic from consuming your production quota.
+  </Card>
+</CardGroup>
+
+### Backoff implementation example
+
+<CodeGroup>
+```javascript JavaScript
+async function requestWithBackoff(fn, maxRetries = 5) {
+  let delay = 1000; // 1 second initial delay
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fn();
+
+    if (response.status !== 429) {
+      return response;
+    }
+
+    if (attempt === maxRetries) {
+      throw new Error('Rate limit exceeded after max retries');
+    }
+
+    // Exponential backoff with jitter
+    const jitter = Math.random() * 500;
+    await new Promise(resolve => setTimeout(resolve, delay + jitter));
+    delay = Math.min(delay * 2, 60000); // cap at 60 seconds
+  }
+}
+```
+
+```python Python
+import time
+import random
+
+def request_with_backoff(fn, max_retries=5):
+    delay = 1.0  # seconds
+
+    for attempt in range(max_retries + 1):
+        response = fn()
+
+        if response.status_code != 429:
+            return response
+
+        if attempt == max_retries:
+            raise Exception("Rate limit exceeded after max retries")
+
+        jitter = random.uniform(0, 0.5)
+        time.sleep(delay + jitter)
+        delay = min(delay * 2, 60)  # cap at 60 seconds
+```
+
+```go Go
+import (
+    "math"
+    "math/rand"
+    "time"
+)
+
+func requestWithBackoff(fn func() (*Response, error), maxRetries int) (*Response, error) {
+    delay := time.Second
+
+    for attempt := 0; attempt <= maxRetries; attempt++ {
+        resp, err := fn()
+        if err != nil {
+            return nil, err
+        }
+        if resp.StatusCode != 429 {
+            return resp, nil
+        }
+        if attempt == maxRetries {
+            return nil, fmt.Errorf("rate limit exceeded after %d retries", maxRetries)
+        }
+
+        jitter := time.Duration(rand.Intn(500)) * time.Millisecond
+        time.Sleep(delay + jitter)
+        delay = time.Duration(math.Min(float64(delay*2), float64(60*time.Second)))
+    }
+    return nil, nil
+}
+```
+</CodeGroup>
+
+---
+
+## Request budgeting
+
+With 100 requests per 15-minute window, plan your integration around these approximate budgets:
+
+| Use case | Estimated requests | Notes |
+|---|---|---|
+| Single bill payment flow | 3–4 | Validate customer, get service options, pay, check status |
+| Single bank transfer flow | 2–3 | Account inquiry, initiate transfer, check status |
+| KYC verification | 1 per check | Each endpoint call counts as one request |
+| Listing billers + categories | 1–2 | Cache results; these rarely change |
+
+If your use case requires more than 100 requests per 15 minutes, contact support to discuss a higher rate limit for your API key.

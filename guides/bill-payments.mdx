@@ -1,0 +1,262 @@
+---
+title: "Bill Payments"
+description: "Pay airtime, data, electricity, cable TV, and other bills through the Hyparrow API."
+---
+
+## Overview
+
+The bill payment flow lets you pay any biller supported by Interswitch — mobile recharge, data bundles, electricity prepaid/postpaid, cable TV subscriptions, and more. The typical integration follows these steps:
+
+1. Discover available **categories** and **billers**
+2. Fetch **payment options** to get the `paymentCode` for the specific product
+3. **Validate** the customer's account or meter number
+4. **Pay** the bill
+5. **Poll** for status if you need a definitive confirmation
+
+<Note>
+All amounts are in **kobo**. ₦100 = `10000` kobo. Always send integer strings, e.g. `"50000"` for ₦500.
+</Note>
+
+---
+
+## Step-by-step guide
+
+<Steps>
+
+<Step title="List bill categories">
+
+Fetch the top-level categories (e.g. Mobile Recharge, Electricity, Cable TV).
+
+```bash
+GET https://api.hyparrow.com/api/v1/bills/categories
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "count": 6,
+  "data": [
+    { "Id": "1", "Name": "Mobile Recharge" },
+    { "Id": "2", "Name": "Electricity" },
+    { "Id": "3", "Name": "Cable TV" }
+  ],
+  "error": ""
+}
+```
+
+</Step>
+
+<Step title="Get billers for a category">
+
+Pass the category name or ID to list every biller within it.
+
+```bash
+GET https://api.hyparrow.com/api/v1/bills/category/billers?category=Mobile%20Recharge
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "count": 3,
+  "data": [
+    { "Id": "109", "Name": "MTN Airtime", "ShortName": "MTN" },
+    { "Id": "110", "Name": "Airtel Airtime", "ShortName": "AIRTEL" }
+  ]
+}
+```
+
+<Tip>
+You can also search across all billers by keyword using `GET /api/v1/bills/search?q=mtn`.
+</Tip>
+
+</Step>
+
+<Step title="Get payment options (paymentCode)">
+
+Each biller has one or more payment options — for example MTN has separate options for ₦100, ₦200, ₦500, etc. You need the `paymentCode` from this step to pay.
+
+```bash
+GET https://api.hyparrow.com/api/v1/bills/services/options?serviceId=109
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "Id": "40101",
+      "Name": "MTN ₦100 Airtime",
+      "PaymentCode": "40101",
+      "Amount": "10000",
+      "IsAmountFixed": true
+    },
+    {
+      "Id": "40102",
+      "Name": "MTN Flexible Airtime",
+      "PaymentCode": "40102",
+      "Amount": "0",
+      "IsAmountFixed": false
+    }
+  ],
+  "error": ""
+}
+```
+
+<Info>
+When `Amount` is `"0"`, the biller accepts any amount and you must supply `amount` yourself. When `Amount` is a non-zero value, the API enforces that exact amount.
+</Info>
+
+</Step>
+
+<Step title="Validate the customer">
+
+For electricity and some other billers, validate the meter/account number before paying. This step is optional for airtime but strongly recommended for postpaid services.
+
+```bash
+GET https://api.hyparrow.com/api/v1/bills/validate?customerId=08169044107&serviceId=109
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "CustomerId": "08169044107",
+    "FullName": "JOHN DOE",
+    "PhoneNumber": "08169044107"
+  },
+  "error": ""
+}
+```
+
+</Step>
+
+<Step title="Pay the bill">
+
+Submit the payment. Use the `paymentCode` from step 3 and the validated `customerId` from step 4.
+
+```bash
+POST https://api.hyparrow.com/api/v1/bills/pay
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "paymentCode": "40101",
+  "customerId": "08169044107",
+  "amount": "10000",
+  "requestRef": "1234567890123",
+  "customerEmail": "customer@example.com",
+  "customerMobile": "08169044107"
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "PaymentCode": "40101",
+    "CustomerId": "08169044107",
+    "Amount": "10000",
+    "ResponseCode": "90000",
+    "ResponseDescription": "Approved"
+  },
+  "error": ""
+}
+```
+
+<Warning>
+`requestRef` must be a **unique 13-digit value** for every transaction. Reusing a reference will cause the payment to fail or be treated as a duplicate.
+</Warning>
+
+</Step>
+
+<Step title="Check payment status">
+
+Poll for the final status of any bill payment using the reference you supplied.
+
+```bash
+GET https://api.hyparrow.com/api/v1/bills/status?reference=1234567890123
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "PaymentCode": "40101",
+    "ResponseCode": "90000",
+    "ResponseDescription": "Approved"
+  },
+  "error": ""
+}
+```
+
+</Step>
+
+</Steps>
+
+---
+
+## Endpoints reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/bills/categories` | List all bill categories |
+| `GET` | `/api/v1/bills/category/billers?category=` | List billers in a category |
+| `GET` | `/api/v1/bills/services` | List all billers across all categories |
+| `GET` | `/api/v1/bills/services/options?serviceId=` | Get payment options for a biller |
+| `GET` | `/api/v1/bills/search?q=` | Search billers by keyword |
+| `GET` | `/api/v1/bills/validate?customerId=&serviceId=` | Validate a customer/meter |
+| `POST` | `/api/v1/bills/pay` | Pay a bill |
+| `GET` | `/api/v1/bills/status?reference=` | Check payment status |
+
+---
+
+## Pay bill request body
+
+<ParamField body="paymentCode" type="string" required>
+  The payment option code retrieved from `GET /api/v1/bills/services/options`. Identifies the exact product being purchased.
+</ParamField>
+
+<ParamField body="customerId" type="string" required>
+  The customer's identifier — a phone number for airtime/data, a meter number for electricity, or a smart card number for cable TV.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  Amount in **kobo** as a string (e.g. `"10000"` for ₦100). Required when the payment option has a flexible amount (`Amount: "0"`). For fixed-price options the API will use the preset amount and reject a mismatched value.
+</ParamField>
+
+<ParamField body="requestRef" type="string" required>
+  A unique 13-digit reference you generate for this transaction (e.g. `"1234567890123"`). Store this — you'll use it to check status.
+</ParamField>
+
+<ParamField body="customerEmail" type="string">
+  Email address of the end customer. Used for receipts and notifications.
+</ParamField>
+
+<ParamField body="customerMobile" type="string">
+  Mobile number of the end customer. Used for receipts and notifications.
+</ParamField>

@@ -1,0 +1,102 @@
+---
+title: "Virtual Account"
+description: "Create a dedicated virtual bank account for a customer to receive payments."
+---
+
+## Create virtual account
+
+Provision a dedicated virtual bank account for a customer. Once created, any bank transfer made to the account number is automatically matched to that customer.
+
+The `bankCode` determines which bank issues the virtual account. Retrieve supported bank codes from `GET /api/v1/transfers/banks`.
+
+```
+POST /api/v1/customers/virtual-account
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Request body
+
+<ParamField body="customerId" type="string" required>
+  UUID of the customer to create a virtual account for. The customer must belong to your API key account.
+</ParamField>
+
+<ParamField body="bankCode" type="string" required>
+  CBN bank code of the bank that will issue the virtual account. For example, `"000013"` for GTBank or `"000014"` for Access Bank.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/customers/virtual-account \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "customerId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "bankCode": "000013"
+  }'
+```
+
+```json Request body
+{
+  "customerId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "bankCode": "000013"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Virtual account created successfully",
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "customerId": "HYP_abc123def456gh78",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane.doe@example.com",
+    "phoneNumber": "08012345678",
+    "status": "active",
+    "accountNumber": "0123456789",
+    "accountName": "Jane Doe",
+    "bankCode": "000013",
+    "bankName": "GTBank",
+    "createdAt": "2024-04-01T08:00:00Z",
+    "updatedAt": "2024-04-01T09:00:00Z"
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="data.accountNumber" type="string">
+  The virtual bank account number assigned to this customer. Share this with the customer so they can make transfers.
+</ResponseField>
+
+<ResponseField name="data.accountName" type="string">
+  The account name registered for this virtual account.
+</ResponseField>
+
+<ResponseField name="data.bankName" type="string">
+  The name of the bank that issued the virtual account.
+</ResponseField>
+
+<ResponseField name="data.bankCode" type="string">
+  The CBN bank code for the issuing bank.
+</ResponseField>
+
+<Note>
+  A customer can only have one virtual account at a time. Calling this endpoint for a customer who already has a virtual account will return a `400` error.
+</Note>

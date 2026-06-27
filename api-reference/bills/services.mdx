@@ -1,0 +1,275 @@
+---
+title: "List Services"
+description: "Browse all billers, retrieve payment options for a service, search billers by name, and look up a specific biller."
+---
+
+Use these endpoints to explore the full list of available billers, fetch the payment items (with their `PaymentCode` values) needed to initiate a payment, search by keyword, or look up a biller by category and name.
+
+## Authentication
+
+All bill endpoints require API key authentication:
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+---
+
+## List all services
+
+Returns every biller available on the platform.
+
+### Endpoint
+
+```
+GET https://api.hyparrow.com/api/v1/bills/services
+```
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the request succeeds.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of biller objects.
+  <Expandable title="biller object">
+    <ResponseField name="id" type="string">
+      Unique biller ID.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Biller display name.
+    </ResponseField>
+    <ResponseField name="categoryId" type="string">
+      The ID of the biller's parent category.
+    </ResponseField>
+    <ResponseField name="categoryName" type="string">
+      The name of the biller's parent category.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.hyparrow.com/api/v1/bills/services \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "data": [
+    { "id": "BIL119", "name": "MTN Airtime", "categoryId": "1", "categoryName": "Airtime" },
+    { "id": "BIL135", "name": "DSTV Subscription", "categoryId": "3", "categoryName": "Cable TV" },
+    { "id": "BIL150", "name": "Ikeja Electric", "categoryId": "2", "categoryName": "Electricity" }
+  ],
+  "error": ""
+}
+```
+
+---
+
+## Get service options
+
+Returns the payment items for a specific biller, including the `PaymentCode` required when calling [Pay Bill](/api-reference/bills/pay). For services with fixed pricing, the item also contains the required amount in kobo.
+
+### Endpoint
+
+```
+GET https://api.hyparrow.com/api/v1/bills/services/options?serviceId={id}
+```
+
+### Query parameters
+
+<ParamField query="serviceId" type="string" required>
+  The biller ID to retrieve payment items for. Obtain this from the list services or list categories endpoints.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the request succeeds.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of payment item objects.
+  <Expandable title="payment item object">
+    <ResponseField name="PaymentCode" type="string">
+      The code to pass as `paymentCode` in the Pay Bill request.
+    </ResponseField>
+    <ResponseField name="Name" type="string">
+      Human-readable name of the payment option.
+    </ResponseField>
+    <ResponseField name="Amount" type="string">
+      Fixed amount in kobo (`"0"` means the amount is flexible and must be provided at payment time).
+    </ResponseField>
+    <ResponseField name="CurrencyCode" type="string">
+      Currency code for this payment option (e.g. `"NGN"`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X GET "https://api.hyparrow.com/api/v1/bills/services/options?serviceId=BIL119" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "PaymentCode": "04011",
+      "Name": "MTN Airtime VTU",
+      "Amount": "0",
+      "CurrencyCode": "NGN"
+    }
+  ],
+  "error": ""
+}
+```
+
+<Note>
+  When `Amount` is `"0"`, the service has flexible pricing. You must supply the `amount` field (in kobo) when calling [Pay Bill](/api-reference/bills/pay).
+</Note>
+
+---
+
+## Search billers
+
+Search for billers by keyword across all categories.
+
+### Endpoint
+
+```
+GET https://api.hyparrow.com/api/v1/bills/search?q={query}
+```
+
+### Query parameters
+
+<ParamField query="q" type="string" required>
+  The search term to match against biller names.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the request succeeds.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of matching billers.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of matching biller objects.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X GET "https://api.hyparrow.com/api/v1/bills/search?q=DSTV" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "data": [
+    { "id": "BIL135", "name": "DSTV Subscription", "categoryId": "3", "categoryName": "Cable TV" }
+  ]
+}
+```
+
+---
+
+## Get biller by category and name
+
+Look up a single biller using its exact category name and biller name. Both parameters are required.
+
+### Endpoint
+
+```
+GET https://api.hyparrow.com/api/v1/bills/biller?category={category}&biller={name}
+```
+
+### Query parameters
+
+<ParamField query="category" type="string" required>
+  The category name to search within (e.g., `Cable TV`).
+</ParamField>
+
+<ParamField query="biller" type="string" required>
+  The biller name to look up (e.g., `DSTV Subscription`).
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the biller is found.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  A single biller object matching the category and name provided.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X GET "https://api.hyparrow.com/api/v1/bills/biller?category=Cable%20TV&biller=DSTV%20Subscription" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "BIL135",
+    "name": "DSTV Subscription",
+    "categoryId": "3",
+    "categoryName": "Cable TV"
+  }
+}
+```
+
+#### Error response
+
+```json
+{
+  "success": false,
+  "error": "biller not found"
+}
+```

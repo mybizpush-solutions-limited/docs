@@ -1,0 +1,254 @@
+---
+title: "Quickstart"
+description: "Create an account, verify your email, log in, generate an API key, and make your first API call."
+---
+
+This guide walks you through the five steps needed to go from zero to a working API call.
+
+<Steps>
+
+<Step title="Create an account">
+
+Send a `POST` request to `/api/v1/auth/signup` with your name, email, password, country, and account type.
+
+`accountType` accepts `"individual"` or `"business"`.  
+`country` is a two-letter ISO 3166-1 alpha-2 code (e.g. `"NG"`).
+
+<CodeGroup>
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Ada",
+    "lastName": "Okafor",
+    "email": "ada@example.com",
+    "password": "S3curePass!",
+    "country": "NG",
+    "accountType": "individual"
+  }'
+```
+</CodeGroup>
+
+**Expected response** (`201 Created`):
+
+```json
+{
+  "success": true,
+  "data": {
+    "message": "User created successfully. Please verify your email.",
+    "userId": "a1b2c3d4-0000-0000-0000-000000000001"
+  }
+}
+```
+
+A 6-digit OTP is emailed to the address you provided.
+
+</Step>
+
+<Step title="Verify your email">
+
+Send the OTP from your inbox to `/api/v1/auth/verify-email`. The OTP expires after 10 minutes.
+
+<CodeGroup>
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/auth/verify-email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ada@example.com",
+    "otp": "482910"
+  }'
+```
+</CodeGroup>
+
+**Expected response** (`200 OK`):
+
+```json
+{
+  "success": true,
+  "message": "Email verified successfully",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "a1b2c3d4-0000-0000-0000-000000000001",
+      "firstName": "Ada",
+      "lastName": "Okafor",
+      "email": "ada@example.com",
+      "country": "NG",
+      "role": "user",
+      "accountType": "individual",
+      "accountStatus": "active",
+      "kycStatus": "not_started",
+      "emailVerified": true
+    }
+  }
+}
+```
+
+<Note>
+The `token` in this response is a JWT you can use immediately. You can also call `/api/v1/auth/login` at any time to get a fresh token.
+</Note>
+
+</Step>
+
+<Step title="Log in">
+
+Exchange your email and password for a JWT. Include this token as a `Bearer` header on all authenticated requests.
+
+<CodeGroup>
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ada@example.com",
+    "password": "S3curePass!"
+  }'
+```
+</CodeGroup>
+
+**Expected response** (`200 OK`):
+
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "a1b2c3d4-0000-0000-0000-000000000001",
+      "firstName": "Ada",
+      "lastName": "Okafor",
+      "email": "ada@example.com",
+      "country": "NG",
+      "role": "user",
+      "accountType": "individual",
+      "accountStatus": "active",
+      "kycStatus": "not_started",
+      "emailVerified": true
+    }
+  }
+}
+```
+
+Save the `token` value — you need it in the next step.
+
+</Step>
+
+<Step title="Create an API key">
+
+API keys are how your application authenticates for programmatic integrations. Use your JWT from step 3 to create one.
+
+<Warning>
+Before you can create a live API key, your account's `kycStatus` must be `"approved"`. You can create a `"test"` key during development while your KYC review is pending.
+</Warning>
+
+<CodeGroup>
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/api-keys/create \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My First Key",
+    "keyType": "test",
+    "webhookUrl": "https://yourapp.com/webhooks/hyparrow",
+    "rateLimit": 100
+  }'
+```
+</CodeGroup>
+
+**Expected response** (`201 Created`):
+
+```json
+{
+  "success": true,
+  "message": "API key created successfully. Please save the secret key - it won't be shown again.",
+  "data": {
+    "id": "b2c3d4e5-0000-0000-0000-000000000002",
+    "name": "My First Key",
+    "apiKey": "pk_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789012",
+    "apiSecret": "sk_AbCdEfGhIjKlMnOpQrStUvWxYz01234567890123456789012345678901234",
+    "keyType": "consumer",
+    "status": "active",
+    "webhookUrl": "https://yourapp.com/webhooks/hyparrow",
+    "rateLimit": 100,
+    "createdAt": "2026-04-04T10:00:00Z"
+  }
+}
+```
+
+<Warning>
+Copy `apiSecret` now. It is shown **only once** and cannot be retrieved again. If you lose it, revoke the key and create a new one.
+</Warning>
+
+</Step>
+
+<Step title="Make your first API call">
+
+With your `apiKey` and `apiSecret` you can now call any API-key-protected endpoint. The following example pays an electricity bill.
+
+<CodeGroup>
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/bills/pay \
+  -H "X-API-Key: pk_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789012" \
+  -H "X-API-Secret: sk_AbCdEfGhIjKlMnOpQrStUvWxYz01234567890123456789012345678901234" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "paymentCode": "04011001",
+    "customerId": "1234567890",
+    "amount": "500000",
+    "requestRef": "myapp-ref-001"
+  }'
+```
+
+```bash Transfer
+curl -X POST https://api.hyparrow.com/api/v1/transfers/initiate \
+  -H "X-API-Key: pk_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789012" \
+  -H "X-API-Secret: sk_AbCdEfGhIjKlMnOpQrStUvWxYz01234567890123456789012345678901234" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "5000",
+    "recipientAccount": "0123456789",
+    "recipientBankCode": "058",
+    "recipientName": "Jane Doe",
+    "senderPhone": "08012345678",
+    "senderEmail": "ada@example.com",
+    "senderLastname": "Okafor",
+    "senderOthernames": "Ada",
+    "narration": "Test transfer"
+  }'
+```
+</CodeGroup>
+
+**Example bill payment response** (`200 OK`):
+
+```json
+{
+  "success": true,
+  "data": {
+    "responseCode": "00",
+    "responseDescription": "Transaction Successful",
+    "amount": "500000",
+    "reference": "myapp-ref-001"
+  },
+  "error": ""
+}
+```
+
+</Step>
+
+</Steps>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Understand when to use API keys vs JWT tokens.
+  </Card>
+  <Card title="API Keys" icon="gear" href="/concepts/api-keys">
+    Manage key types, rate limits, and IP whitelisting.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/concepts/webhooks">
+    Receive real-time payment notifications.
+  </Card>
+  <Card title="Transactions" icon="list" href="/concepts/transactions">
+    Look up and filter your transaction history.
+  </Card>
+</CardGroup>

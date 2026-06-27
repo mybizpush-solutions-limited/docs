@@ -1,0 +1,166 @@
+---
+title: "List Categories"
+description: "Retrieve all bill payment categories and list billers within a specific category."
+---
+
+Bill categories group related billers together — for example, airtime, electricity, cable TV, and internet. Use these endpoints to discover what categories are available and which billers belong to each one.
+
+## Authentication
+
+All bill endpoints require API key authentication. Include both headers on every request:
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+---
+
+## List all categories
+
+Returns every available bill payment category with its ID and name.
+
+### Endpoint
+
+```
+GET https://api.hyparrow.com/api/v1/bills/categories
+```
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the request succeeds.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Total number of categories returned.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of category objects.
+  <Expandable title="category object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the category.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Display name of the category (e.g., `Airtime`, `Electricity`, `Cable TV`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.hyparrow.com/api/v1/bills/categories \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "count": 5,
+  "data": [
+    { "id": "1", "name": "Airtime" },
+    { "id": "2", "name": "Electricity" },
+    { "id": "3", "name": "Cable TV" },
+    { "id": "4", "name": "Internet" },
+    { "id": "5", "name": "Water" }
+  ],
+  "error": ""
+}
+```
+
+---
+
+## List billers by category
+
+Returns all billers that belong to a specific category. You can identify the category by its name or its ID.
+
+### Endpoint
+
+```
+GET https://api.hyparrow.com/api/v1/bills/category/billers?category={name or id}
+```
+
+### Query parameters
+
+<ParamField query="category" type="string" required>
+  The category name (e.g., `Airtime`) or category ID (e.g., `1`). The lookup is case-insensitive for names.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the request succeeds.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Total number of billers returned.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of biller objects belonging to the requested category.
+  <Expandable title="biller object">
+    <ResponseField name="id" type="string">
+      Unique biller identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Biller display name.
+    </ResponseField>
+    <ResponseField name="categoryId" type="string">
+      The ID of the parent category.
+    </ResponseField>
+    <ResponseField name="categoryName" type="string">
+      The name of the parent category.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl (by name)
+curl -X GET "https://api.hyparrow.com/api/v1/bills/category/billers?category=Airtime" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+```bash curl (by id)
+curl -X GET "https://api.hyparrow.com/api/v1/bills/category/billers?category=1" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "count": 4,
+  "data": [
+    { "id": "BIL119", "name": "MTN Airtime", "categoryId": "1", "categoryName": "Airtime" },
+    { "id": "BIL120", "name": "Airtel Airtime", "categoryId": "1", "categoryName": "Airtime" },
+    { "id": "BIL121", "name": "Glo Airtime", "categoryId": "1", "categoryName": "Airtime" },
+    { "id": "BIL122", "name": "9mobile Airtime", "categoryId": "1", "categoryName": "Airtime" }
+  ]
+}
+```
+
+#### Error response
+
+```json
+{
+  "success": false,
+  "error": "category not found"
+}
+```

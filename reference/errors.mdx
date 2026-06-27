@@ -1,0 +1,225 @@
+---
+title: "Errors"
+description: "HTTP status codes, error response format, and how to resolve common errors from the Hyparrow API."
+---
+
+Every response from the Hyparrow API includes a `success` boolean. When a request fails, `success` is `false` and the `error` field contains a human-readable message describing what went wrong.
+
+## Error response shape
+
+```json
+{
+  "success": false,
+  "error": "A description of what went wrong"
+}
+```
+
+Successful responses set `"success": true` and include a `data` field. Error responses never include a `data` field unless the upstream payment processor returned additional diagnostic detail.
+
+---
+
+## HTTP status codes
+
+<AccordionGroup>
+  <Accordion title="400 Bad Request">
+    The request body or query parameters are invalid. This is the most common error during integration.
+
+    **Common causes:**
+    - A required field is missing from the request body
+    - A field value is in the wrong format (e.g., a non-numeric string where a number is expected)
+    - An amount does not match the fixed price required by a bill payment service
+    - A wallet has insufficient balance to cover a transfer or bill payment
+
+    ```json
+    {
+      "success": false,
+      "error": "customerId and serviceId are required"
+    }
+    ```
+
+    ```json
+    {
+      "success": false,
+      "error": "Invalid amount. This service requires exactly ₦1500.00"
+    }
+    ```
+
+    ```json
+    {
+      "success": false,
+      "error": "Insufficient wallet balance. Available: ₦200.00, Required: ₦500.00"
+    }
+    ```
+
+    **How to resolve:** Check the specific error message. Verify all required fields are present and correctly typed. For bill payments, confirm the `amount` matches the service's fixed pricing or omit it to let the API auto-fill it.
+  </Accordion>
+
+  <Accordion title="401 Unauthorized">
+    The request is missing valid credentials, or the provided credentials are invalid or expired.
+
+    **Common causes:**
+
+    | Error message | Cause |
+    |---|---|
+    | `"No token provided"` | The `Authorization` header is absent or does not start with `Bearer ` |
+    | `"Invalid or expired token"` | The JWT has expired or was tampered with |
+    | `"Invalid token"` | The JWT references a user that no longer exists |
+    | `"Missing API credentials"` | The `X-API-Key` or `X-API-Secret` header is absent |
+    | `"Invalid API credentials"` | The `X-API-Key` does not exist, or the `X-API-Secret` does not match |
+
+    ```json
+    {
+      "success": false,
+      "error": "Invalid or expired token"
+    }
+    ```
+
+    **How to resolve:** Ensure you are sending the correct header for your authentication method:
+    - **JWT auth:** `Authorization: Bearer <token>`
+    - **API key auth:** `X-API-Key: <key>` and `X-API-Secret: <secret>`
+
+    Re-authenticate to obtain a fresh token if yours has expired.
+  </Accordion>
+
+  <Accordion title="402 Payment Required">
+    Your KYC verification balance is insufficient to complete the request, or your plan's quota for this API has been reached.
+
+    **Common causes:**
+    - Your account has no remaining verification credits
+    - Your active subscription plan's quota for the requested verification type is exhausted
+
+    ```json
+    {
+      "success": false,
+      "error": "Insufficient verification balance"
+    }
+    ```
+
+    ```json
+    {
+      "success": false,
+      "error": "Quota exceeded for this API on your current plan"
+    }
+    ```
+
+    **How to resolve:** Top up your KYC verification balance or upgrade your subscription plan. You can check your current balance at `GET /api/v1/verify/balance`.
+  </Accordion>
+
+  <Accordion title="403 Forbidden">
+    Your credentials are valid but you do not have permission to access the resource.
+
+    **Common causes:**
+
+    | Error message | Cause |
+    |---|---|
+    | `"Email not verified"` | Your account email has not been verified |
+    | `"API key is not active"` | The API key has been deactivated |
+    | `"API key has expired"` | The API key has passed its expiry date |
+    | `"IP address not allowed"` | Your request IP is not in the API key's allowed IP list |
+
+    ```json
+    {
+      "success": false,
+      "error": "API key is not active"
+    }
+    ```
+
+    ```json
+    {
+      "success": false,
+      "error": "IP address not allowed",
+      "yourIP": "203.0.113.42"
+    }
+    ```
+
+    <Note>
+      When your request is blocked due to an IP restriction, the response includes a `yourIP` field showing the IP address the server received. Use this to verify your outbound IP and update your API key's allowed IP list accordingly.
+    </Note>
+
+    **How to resolve:** Verify your account email, check the status of your API key in the dashboard, and confirm your server's IP is listed in the allowed IPs for the key.
+  </Accordion>
+
+  <Accordion title="404 Not Found">
+    The requested resource does not exist, or the route path is incorrect.
+
+    ```json
+    {
+      "success": false,
+      "error": "Route /api/v1/nonexistent not found"
+    }
+    ```
+
+    ```json
+    {
+      "success": false,
+      "error": "wallet not found"
+    }
+    ```
+
+    **How to resolve:** Double-check the endpoint path and any path parameters such as IDs. Confirm the resource (wallet, transaction, etc.) was created before attempting to fetch it.
+  </Accordion>
+
+  <Accordion title="429 Too Many Requests">
+    You have exceeded the rate limit for your API key or IP address.
+
+    ```json
+    {
+      "success": false,
+      "error": "Too many requests, please try again later"
+    }
+    ```
+
+    **How to resolve:** Slow your request rate and implement exponential backoff. See the [Rate Limits](/reference/rate-limits) reference for default limits and best practices.
+  </Accordion>
+
+  <Accordion title="500 Internal Server Error">
+    An unexpected error occurred on the server.
+
+    ```json
+    {
+      "success": false,
+      "error": "Internal server error"
+    }
+    ```
+
+    **How to resolve:** Retry the request after a short delay using exponential backoff. If the error persists, contact support with the request details and timestamp.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Debugging tips
+
+<CardGroup cols={2}>
+  <Card title="Check success first" icon="circle-check">
+    Always check `success` before reading `data`. A response can return HTTP 200 with `"success": false` when the upstream payment processor rejects the transaction.
+  </Card>
+  <Card title="Read the error message" icon="magnifying-glass">
+    The `error` field is always a plain string. Log it alongside the HTTP status code. The combination of both is usually enough to identify the issue without contacting support.
+  </Card>
+  <Card title="Validate before sending" icon="shield-check">
+    For bill payments, call `GET /api/v1/bills/service-options?serviceId=<id>` to retrieve payment codes and fixed amounts before submitting a payment. This prevents `400` errors from amount mismatches.
+  </Card>
+  <Card title="Watch for 402 on KYC" icon="credit-card">
+    KYC verification endpoints deduct from your balance before calling the upstream provider. A `402` means the deduction was blocked — no charge was made and no verification was attempted.
+  </Card>
+</CardGroup>
+
+### Distinguishing auth errors
+
+The API uses two authentication schemes. The errors they produce differ:
+
+<CodeGroup>
+```http JWT (Bearer token)
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+```http API key
+X-API-Key: your-api-key
+X-API-Secret: your-api-secret
+```
+</CodeGroup>
+
+If you receive `401` with `"Missing API credentials"`, you are calling an API-key-authenticated endpoint but sending a `Bearer` token (or no credentials at all). Switch to the `X-API-Key` / `X-API-Secret` headers.
+
+If you receive `401` with `"No token provided"`, you are calling a JWT-authenticated endpoint without a valid `Authorization: Bearer` header.

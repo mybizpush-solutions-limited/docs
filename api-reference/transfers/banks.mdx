@@ -1,0 +1,79 @@
+---
+title: "List Banks"
+description: "Retrieve the list of supported banks and their codes for use in account inquiries and transfers."
+---
+
+Returns all banks supported for account inquiry and fund transfers. Each bank entry includes a name and a `bankCode` required by other transfer endpoints.
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+## Endpoint
+
+```
+GET https://api.hyparrow.com/api/v1/transfers/banks
+```
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the request succeeds.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of bank objects.
+  <Expandable title="bank object">
+    <ResponseField name="name" type="string">
+      The bank's full display name (e.g., `Access Bank`).
+    </ResponseField>
+    <ResponseField name="bankCode" type="string">
+      The bank's unique code used in account inquiry and transfer requests (e.g., `044`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.hyparrow.com/api/v1/transfers/banks \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+</CodeGroup>
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": [
+    { "name": "Access Bank", "bankCode": "044" },
+    { "name": "First Bank of Nigeria", "bankCode": "011" },
+    { "name": "Guaranty Trust Bank", "bankCode": "058" },
+    { "name": "United Bank for Africa", "bankCode": "033" },
+    { "name": "Zenith Bank", "bankCode": "057" },
+    { "name": "Kuda Bank", "bankCode": "50211" },
+    { "name": "OPay", "bankCode": "999992" }
+  ]
+}
+```
+
+### Error response
+
+```json
+{
+  "success": false,
+  "error": "Failed to get banks: upstream service unavailable"
+}
+```
+
+<Tip>
+  Bank data is served from a cache and refreshed periodically. If you need the latest list, retry after a few minutes if data appears stale.
+</Tip>

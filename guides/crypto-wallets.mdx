@@ -1,0 +1,286 @@
+---
+title: "Crypto Wallets"
+description: "Create and manage on-chain crypto wallets for your customers, check balances, and initiate transfers."
+---
+
+Hyparrow's crypto wallet endpoints let you provision blockchain wallets for your customers, query balances, and send funds — all through a single API. Wallets are created on Coinbase's infrastructure and linked to your customer records.
+
+## Supported networks
+
+| Network identifier | Description |
+|--------------------|-------------|
+| `base` | Base mainnet |
+| `base-sepolia` | Base Sepolia testnet |
+| `solana` | Solana mainnet |
+| `solana-devnet` | Solana devnet |
+
+<Tip>
+  Use `base-sepolia` or `solana-devnet` for integration testing before going live on mainnet.
+</Tip>
+
+## Create a wallet
+
+`POST /api/v1/crypto/wallets`
+
+Creates a new on-chain wallet for a customer and associates it with your account.
+
+<ParamField body="customerId" type="string" required>
+  UUID of the customer who will own the wallet. The customer must belong to your API client.
+</ParamField>
+<ParamField body="network" type="string" required>
+  Blockchain network. Must be one of the supported network identifiers above.
+</ParamField>
+<ParamField body="label" type="string">
+  Human-readable label for the wallet (e.g. `"Main wallet"`, `"Savings"`).
+</ParamField>
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/crypto/wallets \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "customerId": "cust-uuid-...",
+    "network": "base",
+    "label": "Main wallet"
+  }'
+```
+
+```javascript Node.js
+const response = await fetch("https://api.hyparrow.com/api/v1/crypto/wallets", {
+  method: "POST",
+  headers: {
+    "x-api-key": "your_api_key",
+    "x-api-secret": "your_api_secret",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    customerId: "cust-uuid-...",
+    network: "base",
+    label: "Main wallet",
+  }),
+});
+const { data } = await response.json();
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "success": true,
+  "message": "Crypto wallet created successfully",
+  "data": {
+    "wallet": {
+      "id": "wallet-uuid-...",
+      "userId": "cust-uuid-...",
+      "walletAddress": "0xAbCdEf1234...",
+      "network": "base",
+      "status": "active",
+      "label": "Main wallet",
+      "walletId": "coinbase-wallet-id",
+      "createdAt": "2025-06-01T10:00:00Z"
+    }
+  }
+}
+```
+
+Wallet statuses: `active`, `suspended`, `closed`.
+
+## List customer wallets
+
+`GET /api/v1/crypto/customers/:customerId/wallets`
+
+Returns all wallets belonging to the specified customer.
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/crypto/customers/cust-uuid-.../wallets \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "wallets": [
+      {
+        "id": "wallet-uuid-...",
+        "walletAddress": "0xAbCdEf1234...",
+        "network": "base",
+        "status": "active",
+        "label": "Main wallet"
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+## Get wallet balance
+
+`GET /api/v1/crypto/wallets/:walletId/balance`
+
+Fetches live balances from the blockchain for each asset held in the wallet.
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/crypto/wallets/wallet-uuid-.../balance \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "walletId": "wallet-uuid-...",
+    "balances": [
+      {
+        "asset": "ETH",
+        "amount": "0.05123",
+        "currency": "ETH"
+      },
+      {
+        "asset": "USDC",
+        "amount": "120.00",
+        "currency": "USDC"
+      }
+    ]
+  }
+}
+```
+
+## Transfer crypto
+
+`POST /api/v1/crypto/transfer`
+
+Sends crypto from a customer's wallet to an external address. The transfer is initiated immediately; the transaction status starts as `pending` and updates to `confirmed` or `failed` once the network processes it.
+
+<ParamField body="walletId" type="string" required>
+  UUID of the source wallet (the `id` field on the wallet object).
+</ParamField>
+<ParamField body="amount" type="string" required>
+  Amount to send as a string (e.g. `"0.01"`).
+</ParamField>
+<ParamField body="asset" type="string" required>
+  Asset to send (e.g. `"ETH"`, `"USDC"`).
+</ParamField>
+<ParamField body="destination" type="string" required>
+  Recipient's on-chain address.
+</ParamField>
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/crypto/transfer \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "walletId": "wallet-uuid-...",
+    "amount": "0.01",
+    "asset": "ETH",
+    "destination": "0xRecipientAddress..."
+  }'
+```
+
+```javascript Node.js
+const response = await fetch("https://api.hyparrow.com/api/v1/crypto/transfer", {
+  method: "POST",
+  headers: {
+    "x-api-key": "your_api_key",
+    "x-api-secret": "your_api_secret",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    walletId: "wallet-uuid-...",
+    amount: "0.01",
+    asset: "ETH",
+    destination: "0xRecipientAddress...",
+  }),
+});
+const { data } = await response.json();
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "success": true,
+  "message": "Transfer initiated successfully",
+  "data": {
+    "transfer": {
+      "amount": "0.01",
+      "asset": "ETH",
+      "destination": "0xRecipientAddress...",
+      "status": "pending",
+      "transactionHash": "0xTxHash..."
+    },
+    "transaction": {
+      "id": "tx-uuid-...",
+      "cryptoWalletId": "wallet-uuid-...",
+      "type": "withdraw",
+      "status": "pending",
+      "amount": "0.01",
+      "asset": "ETH",
+      "fromAddress": "0xAbCdEf1234...",
+      "toAddress": "0xRecipientAddress...",
+      "transactionHash": "0xTxHash...",
+      "network": "base",
+      "createdAt": "2025-06-01T10:05:00Z"
+    }
+  }
+}
+```
+
+<Warning>
+  On-chain transfers are irreversible. Verify the destination address before calling this endpoint.
+</Warning>
+
+## Transaction history
+
+`GET /api/v1/crypto/wallets/:walletId/transactions`
+
+Returns all recorded transactions for the wallet, ordered newest first.
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/crypto/wallets/wallet-uuid-.../transactions \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "transactions": [
+      {
+        "id": "tx-uuid-...",
+        "type": "withdraw",
+        "status": "confirmed",
+        "amount": "0.01",
+        "asset": "ETH",
+        "fromAddress": "0xAbCdEf1234...",
+        "toAddress": "0xRecipientAddress...",
+        "transactionHash": "0xTxHash...",
+        "network": "base",
+        "createdAt": "2025-06-01T10:05:00Z"
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+### Transaction types and statuses
+
+| Field | Values |
+|-------|--------|
+| `type` | `deposit`, `withdraw`, `payment`, `receive` |
+| `status` | `pending`, `confirmed`, `failed` |

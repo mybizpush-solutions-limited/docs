@@ -1,0 +1,183 @@
+---
+title: "Initiate Payment"
+description: "Charge a card by submitting encrypted card details and receiving a payment response or OTP challenge."
+---
+
+Initiate a card purchase by sending your customer's card details. Card data is encrypted server-side using Interswitch's RSA public key — you submit the raw values and the API handles all encryption before forwarding to the payment processor.
+
+## Endpoint
+
+```
+POST /api/v1/card-payments/purchase
+```
+
+## Authentication
+
+Include your API key credentials as request headers:
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+## Request body
+
+<ParamField body="customerId" type="string" required>
+  The ID of the customer making the payment. Must be a valid customer record in your account.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  The charge amount in naira as a string. Do not include kobo — the API converts internally. For example, `"1000"` charges ₦1,000.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  ISO 4217 currency code. Use `"NGN"` for Nigerian naira.
+</ParamField>
+
+<ParamField body="transactionRef" type="string" required>
+  Your unique reference for this transaction. Must be unique across all your transactions. Used to query status and correlate webhooks.
+</ParamField>
+
+<ParamField body="pan" type="string" required>
+  The full card number (Primary Account Number). Transmitted in plain text to the API; the API encrypts it before passing to the processor. Do not pre-encrypt this value.
+</ParamField>
+
+<ParamField body="pin" type="string" required>
+  The card PIN. Transmitted in plain text to the API; the API encrypts it server-side.
+</ParamField>
+
+<ParamField body="expiryDate" type="string" required>
+  Card expiry date in `YYMM` format. For example, `"2504"` represents April 2025.
+</ParamField>
+
+<ParamField body="cvv2" type="string" required>
+  The 3-digit CVV/CVV2 security code printed on the card.
+</ParamField>
+
+## Response codes
+
+The `data.responseCode` field in a successful response indicates the next step:
+
+| Code | Meaning |
+|------|---------|
+| `00` | Payment approved. Transaction is complete. |
+| `T0` | OTP required. Proceed to [Authenticate OTP](/api-reference/card-payments/authenticate-otp) (Verve / Mastercard). |
+| `S0` | 3DS authentication required. Redirect the user to the 3DS URL. |
+
+## Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/card-payments/purchase \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "customerId": "HYP_abc123def456gh78",
+    "amount": "5000",
+    "currency": "NGN",
+    "transactionRef": "TXN-20240401-001",
+    "pan": "5061460410120223210",
+    "pin": "1234",
+    "expiryDate": "2612",
+    "cvv2": "111"
+  }'
+```
+
+```json Request body
+{
+  "customerId": "HYP_abc123def456gh78",
+  "amount": "5000",
+  "currency": "NGN",
+  "transactionRef": "TXN-20240401-001",
+  "pan": "5061460410120223210",
+  "pin": "1234",
+  "expiryDate": "2612",
+  "cvv2": "111"
+}
+```
+
+</CodeGroup>
+
+## Example responses
+
+<CodeGroup>
+
+```json OTP required (T0 — Verve/Mastercard)
+{
+  "success": true,
+  "message": "Card purchase initiated",
+  "data": {
+    "responseCode": "T0",
+    "message": "Enter OTP sent to your registered phone",
+    "paymentId": "PAY-2024042310300001",
+    "transactionId": "1234567890",
+    "eciFlag": "07"
+  }
+}
+```
+
+```json Approved (00)
+{
+  "success": true,
+  "message": "Card purchase initiated",
+  "data": {
+    "responseCode": "00",
+    "message": "Approved by Financial Institution",
+    "paymentId": "PAY-2024042310300001",
+    "transactionId": "1234567890",
+    "amount": "500000"
+  }
+}
+```
+
+```json Rejected (error)
+{
+  "success": false,
+  "message": "Card purchase rejected by payment processor",
+  "data": {
+    "errors": [
+      {
+        "code": "E42",
+        "message": "Unable to decrypt block"
+      }
+    ]
+  }
+}
+```
+
+</CodeGroup>
+
+## Response fields
+
+<ResponseField name="success" type="boolean">
+  `true` when the API call succeeded (even if the card was declined — check `data.responseCode`).
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable summary of the outcome.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The raw response from the payment processor.
+
+  <Expandable title="data fields">
+    <ResponseField name="data.responseCode" type="string">
+      Processor response code. `00` = approved, `T0` = OTP required, `S0` = 3DS required.
+    </ResponseField>
+    <ResponseField name="data.message" type="string">
+      Processor response message.
+    </ResponseField>
+    <ResponseField name="data.paymentId" type="string">
+      Processor-assigned payment ID. Required when submitting an OTP via the [Authenticate OTP](/api-reference/card-payments/authenticate-otp) endpoint.
+    </ResponseField>
+    <ResponseField name="data.transactionId" type="string">
+      Processor-assigned transaction ID. Required when submitting an OTP.
+    </ResponseField>
+    <ResponseField name="data.eciFlag" type="string">
+      Electronic Commerce Indicator flag. Returned for OTP flows; pass this value to the authenticate-otp endpoint.
+    </ResponseField>
+  </Expandable>
+</ResponseField>

@@ -1,0 +1,258 @@
+---
+title: "Card Payments"
+description: "Accept Visa, Mastercard, and Verve card payments with OTP authentication via the Hyparrow API."
+---
+
+## Overview
+
+The card payments API lets you charge Visa, Mastercard, and Verve cards directly. Card data is encrypted server-side using Interswitch's RSA public key before being forwarded — plaintext card details never leave the Hyparrow API unencrypted.
+
+The payment flow depends on the card type:
+
+- **Response code `00`** — Payment approved immediately. No further action needed.
+- **Response code `T0`** (Verve / Mastercard) — OTP required. Prompt your customer for the OTP sent to their phone and call `authenticate-otp`.
+- **Response code `S0`** (Visa 3DS) — 3D Secure authentication required.
+
+<Warning>
+Never log or store raw card numbers (`pan`), PINs, or CVV2 values. Send them directly to this API over HTTPS and discard them immediately after the request.
+</Warning>
+
+---
+
+## Step-by-step guide
+
+<Steps>
+
+<Step title="Initiate a card purchase">
+
+Submit the card details and transaction information. The API encrypts the card data with Interswitch's RSA public key before forwarding the request.
+
+```bash
+POST https://api.hyparrow.com/api/v1/card-payments/purchase
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "customerId": "customer_001",
+  "amount": "5000",
+  "currency": "NGN",
+  "transactionRef": "TXN-20260401-00123",
+  "pan": "5061260000000000000",
+  "pin": "1234",
+  "expiryDate": "2612",
+  "cvv2": "123"
+}
+```
+
+<Note>
+`amount` is in **naira** (not kobo) for card purchases. Send `"5000"` for ₦5,000.
+</Note>
+
+**Response — OTP required (Verve/Mastercard)**
+
+```json
+{
+  "success": true,
+  "message": "Card purchase initiated",
+  "data": {
+    "responseCode": "T0",
+    "message": "Please enter the OTP sent to your phone",
+    "paymentId": "1234567890",
+    "transactionId": "9876543210"
+  }
+}
+```
+
+**Response — approved immediately**
+
+```json
+{
+  "success": true,
+  "message": "Card purchase initiated",
+  "data": {
+    "responseCode": "00",
+    "message": "Approved",
+    "paymentId": "1234567890"
+  }
+}
+```
+
+</Step>
+
+<Step title="Authenticate the OTP (Verve / Mastercard)">
+
+If the purchase returns `responseCode: "T0"`, prompt the customer for the OTP delivered to their registered phone number and submit it here.
+
+```bash
+POST https://api.hyparrow.com/api/v1/card-payments/authenticate-otp
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "paymentId": "1234567890",
+  "otp": "123456",
+  "transactionId": "9876543210",
+  "eciFlag": ""
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "message": "OTP authenticated successfully",
+  "data": {
+    "responseCode": "00",
+    "message": "Approved"
+  }
+}
+```
+
+</Step>
+
+<Step title="Resend OTP (optional)">
+
+If the customer didn't receive the OTP, trigger a resend.
+
+```bash
+POST https://api.hyparrow.com/api/v1/card-payments/resend-otp
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "paymentId": "1234567890",
+  "transactionId": "9876543210"
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "message": "OTP resent successfully",
+  "data": {
+    "responseCode": "00",
+    "message": "OTP resent"
+  }
+}
+```
+
+</Step>
+
+<Step title="Check transaction status">
+
+Query the final outcome of any card transaction by reference and amount.
+
+```bash
+GET https://api.hyparrow.com/api/v1/card-payments/status?transactionRef=TXN-20260401-00123&amount=5000
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "message": "Transaction status retrieved",
+  "data": {
+    "ResponseCode": "00",
+    "ResponseDescription": "Approved",
+    "Amount": "500000"
+  }
+}
+```
+
+</Step>
+
+</Steps>
+
+---
+
+## Endpoints reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/card-payments/purchase` | Initiate a card charge |
+| `POST` | `/api/v1/card-payments/authenticate-otp` | Submit OTP for Verve/Mastercard |
+| `POST` | `/api/v1/card-payments/resend-otp` | Resend OTP to the customer |
+| `GET` | `/api/v1/card-payments/status` | Query transaction status |
+| `GET` | `/api/v1/card-payments/transactions` | List your card transactions |
+
+---
+
+## Purchase request body
+
+<ParamField body="customerId" type="string" required>
+  Your internal identifier for the customer initiating the payment.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  Amount in **naira** as a string (e.g. `"5000"` for ₦5,000).
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Currency code. Use `"NGN"` for Nigerian Naira.
+</ParamField>
+
+<ParamField body="transactionRef" type="string" required>
+  A unique reference for this transaction. Use it to query status and reconcile payments.
+</ParamField>
+
+<ParamField body="pan" type="string" required>
+  The card number (Primary Account Number). Transmitted over HTTPS and RSA-encrypted by the API before forwarding.
+</ParamField>
+
+<ParamField body="pin" type="string" required>
+  The card PIN. RSA-encrypted by the API before forwarding. Never stored in plaintext.
+</ParamField>
+
+<ParamField body="expiryDate" type="string" required>
+  Card expiry date in `YYMM` format. For example, April 2026 = `"2604"`.
+</ParamField>
+
+<ParamField body="cvv2" type="string" required>
+  The 3-digit card security code printed on the back of the card.
+</ParamField>
+
+---
+
+## OTP authentication request body
+
+<ParamField body="paymentId" type="string" required>
+  The `paymentId` returned in the purchase response.
+</ParamField>
+
+<ParamField body="otp" type="string" required>
+  The one-time password entered by the customer.
+</ParamField>
+
+<ParamField body="transactionId" type="string" required>
+  The `transactionId` returned in the purchase response.
+</ParamField>
+
+<ParamField body="eciFlag" type="string">
+  Electronic Commerce Indicator flag. Leave empty unless directed by your integration support contact.
+</ParamField>
+
+---
+
+## Response codes
+
+| Code | Meaning |
+|------|---------|
+| `00` | Approved — transaction complete |
+| `T0` | OTP required (Verve / Mastercard) — call `authenticate-otp` |
+| `S0` | 3D Secure required (Visa) |
+| Other | Declined — check `message` for reason |

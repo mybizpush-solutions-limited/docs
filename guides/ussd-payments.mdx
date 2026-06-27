@@ -1,0 +1,161 @@
+---
+title: "USSD Payments"
+description: "Generate USSD codes so customers can pay from any phone without internet access."
+---
+
+## Overview
+
+USSD payments let your customers pay by dialling a short code on their mobile phone — no internet or smartphone required. After you generate a USSD code for a transaction, you instruct the customer to dial it. The bank processes the payment and Hyparrow notifies you via webhook when it's confirmed.
+
+**Key characteristics:**
+
+- Works on any mobile phone including feature phones
+- No internet connection needed by the customer
+- Payment confirmation is **asynchronous** — you receive a webhook, not an immediate success response
+- Supported by all major Nigerian banks that offer USSD banking
+
+---
+
+## How it works
+
+1. Your server calls `POST /api/v1/payments/ussd/generate` with the amount and the customer's bank code.
+2. Hyparrow returns a USSD string (e.g. `*966*000*123456#`) and a `merchantTransactionReference`.
+3. You display the USSD code to the customer and instruct them to dial it.
+4. The customer dials, authenticates on their phone, and the bank processes the debit.
+5. Hyparrow fires a webhook to your registered URL when the payment settles.
+
+<Note>
+Because the customer completes payment on their phone independently, the `POST /generate` response does **not** mean the payment is complete. Always wait for the webhook before crediting the customer.
+</Note>
+
+---
+
+## Step-by-step guide
+
+<Steps>
+
+<Step title="List USSD issuers">
+
+Fetch the banks that support USSD payments along with their `bankCode` values.
+
+```bash
+GET https://api.hyparrow.com/api/v1/payments/ussd/issuers
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": [
+    { "bankCode": "057", "bankName": "Zenith Bank", "ussdCode": "*966#" },
+    { "bankCode": "011", "bankName": "First Bank", "ussdCode": "*894#" },
+    { "bankCode": "058", "bankName": "GTBank", "ussdCode": "*737#" }
+  ]
+}
+```
+
+Present these options to your customer so they can select their bank.
+
+</Step>
+
+<Step title="Generate a USSD code">
+
+Call the generate endpoint with the amount, the customer's chosen bank code, and optionally your own transaction reference.
+
+```bash
+POST https://api.hyparrow.com/api/v1/payments/ussd/generate
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "amount": "500000",
+  "bankCode": "057",
+  "merchantTransactionReference": "ORDER-20260404-00099"
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "message": "USSD code generated. Instruct the customer to dial the provided code.",
+  "merchantTransactionReference": "ORDER-20260404-00099",
+  "data": {
+    "ussdCode": "*966*000*123456#",
+    "expiresAt": "2026-04-04T11:00:00Z"
+  }
+}
+```
+
+Display `ussdCode` to the customer with clear instructions: **"Dial this code on your phone to complete payment."**
+
+</Step>
+
+<Step title="Receive the webhook">
+
+When the customer completes the USSD payment, Hyparrow sends a POST to your webhook URL.
+
+```json
+{
+  "event": "transaction.completed",
+  "data": {
+    "reference": "ORDER-20260404-00099",
+    "type": "ussd_payment",
+    "amount": 500000,
+    "currency": "NGN",
+    "status": "completed",
+    "channel": "ussd",
+    "bankCode": "057"
+  }
+}
+```
+
+Match the `reference` field against your `merchantTransactionReference` to identify the order and mark it as paid.
+
+</Step>
+
+</Steps>
+
+---
+
+## Endpoints reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/payments/ussd/issuers` | List banks that support USSD payments |
+| `POST` | `/api/v1/payments/ussd/generate` | Generate a USSD payment code |
+
+---
+
+## Generate request body
+
+<ParamField body="amount" type="string" required>
+  Amount in **kobo** as a string (e.g. `"500000"` for ₦5,000).
+</ParamField>
+
+<ParamField body="bankCode" type="string" required>
+  The bank code of the customer's chosen bank. Retrieve valid codes from `GET /api/v1/payments/ussd/issuers`.
+</ParamField>
+
+<ParamField body="merchantTransactionReference" type="string">
+  Your own unique reference for this transaction. If omitted, Hyparrow generates one. Store this value — it appears in the webhook payload.
+</ParamField>
+
+
+
+---
+
+## Checkout integration
+
+If you use the Hyparrow checkout widget, USSD is available as a built-in payment method. The checkout UI handles displaying the issuer list and the generated USSD code to the customer. You only need to handle the webhook to confirm payment.
+
+<Tip>
+For the best customer experience, show a countdown timer next to the USSD code and a "I've paid" button that polls your backend (which in turn checks for the webhook) to provide immediate feedback.
+</Tip>

@@ -1,0 +1,255 @@
+---
+title: "Customers"
+description: "Create and manage customers, assign virtual accounts, and receive payment notifications via webhooks."
+---
+
+Customers represent the end-users of your application. Each customer belongs to your API client and receives a unique `customerId` code (prefixed `HYP_`). You can assign a dedicated virtual account to a customer so that any inbound bank transfer is automatically associated with them and posted to your webhook.
+
+## Create a customer
+
+`POST /api/v1/customers`
+
+<ParamField body="firstName" type="string" required>
+  Customer's first name.
+</ParamField>
+<ParamField body="lastName" type="string" required>
+  Customer's last name.
+</ParamField>
+<ParamField body="email" type="string" required>
+  Customer's email address.
+</ParamField>
+<ParamField body="phoneNumber" type="string" required>
+  Customer's phone number.
+</ParamField>
+<ParamField body="dateOfBirth" type="string">
+  Date of birth in `YYYY-MM-DD` format.
+</ParamField>
+<ParamField body="address" type="string">
+  Customer's physical address.
+</ParamField>
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/customers \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane@example.com",
+    "phoneNumber": "+2348012345678",
+    "dateOfBirth": "1990-04-15",
+    "address": "12 Marina Street, Lagos"
+  }'
+```
+
+```javascript Node.js
+const response = await fetch("https://api.hyparrow.com/api/v1/customers", {
+  method: "POST",
+  headers: {
+    "x-api-key": "your_api_key",
+    "x-api-secret": "your_api_secret",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    firstName: "Jane",
+    lastName: "Doe",
+    email: "jane@example.com",
+    phoneNumber: "+2348012345678",
+  }),
+});
+const { data } = await response.json();
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "success": true,
+  "message": "Customer created successfully",
+  "data": {
+    "id": "uuid-...",
+    "customerId": "HYP_aBcDeFgH1234",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane@example.com",
+    "phoneNumber": "+2348012345678",
+    "status": "active",
+    "createdAt": "2025-06-01T10:00:00Z"
+  }
+}
+```
+
+Customer statuses: `active`, `suspended`, `inactive`.
+
+## Create a virtual account
+
+Assign a permanent virtual bank account to a customer. Any transfer made to this account number is linked to the customer and triggers the `customer.transaction.completed` webhook event.
+
+`POST /api/v1/customers/virtual-account`
+
+<ParamField body="customerId" type="string" required>
+  UUID of the customer (the `id` field, not `customerId` code).
+</ParamField>
+<ParamField body="bankCode" type="string" required>
+  Bank code of the preferred issuing bank (e.g. `"035"` for Wema Bank).
+</ParamField>
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/customers/virtual-account \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "customerId": "uuid-...",
+    "bankCode": "035"
+  }'
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.hyparrow.com/api/v1/customers/virtual-account",
+  {
+    method: "POST",
+    headers: {
+      "x-api-key": "your_api_key",
+      "x-api-secret": "your_api_secret",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ customerId: "uuid-...", bankCode: "035" }),
+  }
+);
+const { data } = await response.json();
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "success": true,
+  "message": "Virtual account created successfully",
+  "data": {
+    "id": "uuid-...",
+    "customerId": "HYP_aBcDeFgH1234",
+    "accountNumber": "0123456789",
+    "accountName": "Hyparrow / Jane Doe",
+    "bankCode": "035",
+    "bankName": "Wema Bank"
+  }
+}
+```
+
+<Note>
+  Each customer can hold one virtual account. Calling this endpoint a second time for the same customer returns a 400 error.
+</Note>
+
+## List customers
+
+`GET /api/v1/customers`
+
+| Query parameter | Type | Default | Description |
+|-----------------|------|---------|-------------|
+| `page` | number | `1` | Page number |
+| `limit` | number | `20` | Results per page |
+| `status` | string | — | Filter by customer status (`active`, `suspended`, `inactive`) |
+
+```bash cURL
+curl --request GET \
+  --url "https://api.hyparrow.com/api/v1/customers?page=1&limit=20&status=active" \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+```json Response
+{
+  "success": true,
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 42,
+    "totalPages": 3
+  }
+}
+```
+
+## Get a customer
+
+`GET /api/v1/customers/:id`
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/customers/uuid-... \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+Returns the full customer object including virtual account details when one has been assigned.
+
+## Receiving payments via webhook
+
+When a transfer is made to a customer's virtual account, Hyparrow posts a `customer.transaction.completed` event to your configured webhook URL.
+
+### Webhook payload
+
+```json
+{
+  "event": "customer.transaction.completed",
+  "data": {
+    "customerId": "HYP_aBcDeFgH1234",
+    "customerUuid": "uuid-...",
+    "amount": 10000.00,
+    "currency": "NGN",
+    "accountNumber": "0123456789",
+    "bankCode": "035",
+    "bankName": "Wema Bank",
+    "reference": "TXN-REF-001",
+    "narration": "Transfer from John Smith",
+    "createdAt": "2025-06-01T10:05:00Z"
+  }
+}
+```
+
+<Tip>
+  Always validate the webhook signature header before processing the payload. Reject any request that fails signature verification.
+</Tip>
+
+### Webhook response fields
+
+<ResponseField name="event" type="string">
+  Always `customer.transaction.completed` for customer VA payments.
+</ResponseField>
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="customerId" type="string">
+      The `HYP_` prefixed customer code.
+    </ResponseField>
+    <ResponseField name="customerUuid" type="string">
+      Internal UUID of the customer record.
+    </ResponseField>
+    <ResponseField name="amount" type="number">
+      Amount received in the transaction.
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      ISO 4217 currency code.
+    </ResponseField>
+    <ResponseField name="accountNumber" type="string">
+      The virtual account number that received the transfer.
+    </ResponseField>
+    <ResponseField name="reference" type="string">
+      Unique transaction reference.
+    </ResponseField>
+    <ResponseField name="narration" type="string">
+      Narration/description supplied by the sender.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp of the transaction.
+    </ResponseField>
+  </Expandable>
+</ResponseField>

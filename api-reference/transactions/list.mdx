@@ -1,0 +1,208 @@
+---
+title: "List Transactions"
+description: "Retrieve a paginated, filterable list of all transactions for your account."
+---
+
+## List transactions
+
+Returns all transactions associated with your account in reverse chronological order. You can filter by type, status, and date range.
+
+```
+GET /api/v1/transactions/
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Query parameters
+
+<ParamField query="page" type="integer">
+  Page number. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of results per page. Defaults to `20`.
+</ParamField>
+
+<ParamField query="type" type="string">
+  Filter by transaction type. Supported values:
+  - `virtual_account`
+  - `bank_transfer`
+  - `bill_payment`
+  - `card_payment`
+  - `account_inquiry`
+  - `credit`
+  - `debit`
+  - `invoice_payment`
+  - `product_purchase`
+  - `subscription_payment`
+  - `verification_payment`
+  - `opay_payment`
+  - `ussd_payment`
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by transaction status. One of: `pending`, `processing`, `completed`, `success`, `failed`, `canceled`.
+</ParamField>
+
+<ParamField query="dateFrom" type="string">
+  ISO 8601 date-time. Return only transactions created on or after this timestamp. Example: `"2024-04-01T00:00:00Z"`.
+</ParamField>
+
+<ParamField query="dateTo" type="string">
+  ISO 8601 date-time. Return only transactions created on or before this timestamp. Example: `"2024-04-30T23:59:59Z"`.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.hyparrow.com/api/v1/transactions/?page=1&limit=20&type=card_payment&status=completed&dateFrom=2024-04-01T00:00:00Z' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "clientId": "7e9a1b2c-3d4e-5f60-a7b8-c9d0e1f2a3b4",
+      "customerId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "card_payment",
+      "status": "completed",
+      "amount": 500000,
+      "currency": "NGN",
+      "reference": "TXN-20240401-001",
+      "description": "",
+      "provider": "interswitch",
+      "channel": "card",
+      "responseCode": "00",
+      "responseMessage": "Approved by Financial Institution",
+      "completedAt": "2024-04-23T10:30:00Z",
+      "createdAt": "2024-04-23T10:29:45Z",
+      "updatedAt": "2024-04-23T10:30:00Z",
+      "metadata": {}
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "clientId": "7e9a1b2c-3d4e-5f60-a7b8-c9d0e1f2a3b4",
+      "invoiceId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "type": "invoice_payment",
+      "status": "completed",
+      "amount": 43000000,
+      "currency": "NGN",
+      "reference": "VA-PAY-20240423",
+      "provider": "interswitch",
+      "channel": "virtual_account",
+      "responseCode": "00",
+      "completedAt": "2024-04-23T11:00:00Z",
+      "createdAt": "2024-04-23T10:59:00Z",
+      "updatedAt": "2024-04-23T11:00:00Z",
+      "metadata": {}
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 2,
+    "totalPages": 1
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="data" type="array">
+  Array of transaction objects.
+
+  <Expandable title="Transaction object fields">
+    <ResponseField name="id" type="string">
+      Unique transaction UUID.
+    </ResponseField>
+    <ResponseField name="clientId" type="string">
+      UUID of the API client that owns this transaction.
+    </ResponseField>
+    <ResponseField name="customerId" type="string">
+      UUID of the customer associated with this transaction, if any.
+    </ResponseField>
+    <ResponseField name="invoiceId" type="string">
+      UUID of the linked invoice, if this transaction is an invoice payment.
+    </ResponseField>
+    <ResponseField name="subscriptionId" type="string">
+      UUID of the linked subscription, if this is a subscription payment.
+    </ResponseField>
+    <ResponseField name="productId" type="string">
+      UUID of the linked product, if applicable.
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      Transaction type (see query parameter values above).
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Transaction status: `pending`, `processing`, `completed`, `success`, `failed`, or `canceled`.
+    </ResponseField>
+    <ResponseField name="amount" type="integer">
+      Transaction amount in the smallest currency unit (kobo for NGN).
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      3-letter ISO 4217 currency code.
+    </ResponseField>
+    <ResponseField name="reference" type="string">
+      Your unique transaction reference.
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Optional transaction description.
+    </ResponseField>
+    <ResponseField name="provider" type="string">
+      Payment provider used to process the transaction.
+    </ResponseField>
+    <ResponseField name="channel" type="string">
+      Payment channel (e.g. `"card"`, `"virtual_account"`).
+    </ResponseField>
+    <ResponseField name="responseCode" type="string">
+      Processor response code.
+    </ResponseField>
+    <ResponseField name="responseMessage" type="string">
+      Processor response message.
+    </ResponseField>
+    <ResponseField name="senderName" type="string">
+      Name of the sender, for inbound bank transfers.
+    </ResponseField>
+    <ResponseField name="senderAccountNumber" type="string">
+      Sender's account number, for inbound bank transfers.
+    </ResponseField>
+    <ResponseField name="senderBankCode" type="string">
+      Sender's bank code, for inbound bank transfers.
+    </ResponseField>
+    <ResponseField name="completedAt" type="string">
+      ISO 8601 timestamp of when the transaction completed.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp of when the transaction was created.
+    </ResponseField>
+    <ResponseField name="updatedAt" type="string">
+      ISO 8601 timestamp of the last update.
+    </ResponseField>
+    <ResponseField name="metadata" type="object">
+      Arbitrary key-value metadata attached to the transaction.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination metadata.
+
+  <Expandable title="Pagination fields">
+    <ResponseField name="page" type="integer">Current page number.</ResponseField>
+    <ResponseField name="limit" type="integer">Results per page.</ResponseField>
+    <ResponseField name="total" type="integer">Total number of matching transactions.</ResponseField>
+    <ResponseField name="totalPages" type="integer">Total number of pages.</ResponseField>
+  </Expandable>
+</ResponseField>

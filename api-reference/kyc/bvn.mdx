@@ -1,0 +1,350 @@
+---
+title: "BVN Verification"
+description: "Look up and verify a Bank Verification Number (BVN) using Zeeh or Interswitch as the data provider."
+---
+
+BVN verification endpoints let you confirm a person's identity using their 11-digit Bank Verification Number. Each call deducts from your KYC balance or quota depending on your active plan.
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+---
+
+## Zeeh — Basic BVN lookup
+
+Returns basic details (name, phone, date of birth) for a BVN without requiring additional consent.
+
+```
+POST /api/v1/kyc/zee/bvn/basic
+```
+
+### Request body
+
+<ParamField body="bvn" type="string" required>
+  The 11-digit BVN to look up.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/zee/bvn/basic \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "bvn": "22211122233" }'
+```
+
+```json Request body
+{ "bvn": "22211122233" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "bvn": "22211122233",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "middleName": "A",
+    "dateOfBirth": "1990-01-15",
+    "phoneNumber": "080XXXXXXXX",
+    "gender": "Female",
+    "enrollmentBank": "058",
+    "enrollmentBranch": "VICTORIA ISLAND"
+  }
+}
+```
+
+---
+
+## Zeeh — Advanced BVN lookup
+
+Returns extended BVN details including a base64-encoded photo.
+
+```
+POST /api/v1/kyc/zee/bvn/advanced
+```
+
+### Request body
+
+<ParamField body="bvn" type="string" required>
+  The 11-digit BVN to look up.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/zee/bvn/advanced \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "bvn": "22211122233" }'
+```
+
+```json Request body
+{ "bvn": "22211122233" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "bvn": "22211122233",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "dateOfBirth": "1990-01-15",
+    "phoneNumber": "080XXXXXXXX",
+    "photo": "data:image/jpeg;base64,/9j/4AAQSkZJRgAB..."
+  }
+}
+```
+
+---
+
+## Zeeh — BVN with face comparison
+
+Verify a BVN and compare the registered face photo against an image you supply.
+
+```
+POST /api/v1/kyc/zee/bvn/with-face
+```
+
+### Request body
+
+<ParamField body="bvn" type="string" required>
+  The 11-digit BVN.
+</ParamField>
+
+<ParamField body="imageUrl" type="string" required>
+  A publicly accessible URL of the face photo to compare against the BVN photo on record.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/zee/bvn/with-face \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "bvn": "22211122233",
+    "imageUrl": "https://your-cdn.example.com/selfie.jpg"
+  }'
+```
+
+```json Request body
+{
+  "bvn": "22211122233",
+  "imageUrl": "https://your-cdn.example.com/selfie.jpg"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "bvn": "22211122233",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "faceMatch": true,
+    "confidence": 98.7
+  }
+}
+```
+
+---
+
+## Zeeh — BVN with phone match
+
+Look up a BVN by the phone number associated with it.
+
+```
+POST /api/v1/kyc/zee/bvn/with-phone
+```
+
+### Request body
+
+<ParamField body="phoneNumber" type="string" required>
+  The phone number to match against BVN records.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/zee/bvn/with-phone \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "phoneNumber": "08012345678" }'
+```
+
+```json Request body
+{ "phoneNumber": "08012345678" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "phoneNumber": "08012345678",
+    "bvn": "22211122233",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "match": true
+  }
+}
+```
+
+---
+
+## Interswitch — Full BVN details
+
+Retrieve comprehensive BVN details via the Interswitch verification network.
+
+```
+POST /api/v1/kyc/switch/bvn/full
+```
+
+### Request body
+
+<ParamField body="bvn" type="string" required>
+  The 11-digit BVN.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/bvn/full \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "bvn": "22211122233" }'
+```
+
+```json Request body
+{ "bvn": "22211122233" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "bvn": "22211122233",
+    "firstName": "Jane",
+    "middleName": "A",
+    "lastName": "Doe",
+    "dateOfBirth": "1990-01-15",
+    "phoneNumber": "080XXXXXXXX",
+    "gender": "Female",
+    "nationality": "Nigerian",
+    "maritalStatus": "Single",
+    "residentialAddress": "12 Main Street, Lagos",
+    "stateOfOrigin": "Lagos",
+    "lgaOfOrigin": "Eti-Osa"
+  }
+}
+```
+
+---
+
+## Interswitch — BVN boolean match
+
+Check whether a given name matches the name on file for a BVN. Returns `EXACT_MATCH` or `NO_MATCH`.
+
+```
+POST /api/v1/kyc/switch/bvn/boolean-match
+```
+
+### Request body
+
+<ParamField body="bvn" type="string" required>
+  The 11-digit BVN to check.
+</ParamField>
+
+<ParamField body="firstName" type="string" required>
+  First name to verify against the BVN record.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  Last name to verify against the BVN record.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/bvn/boolean-match \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "bvn": "22211122233",
+    "firstName": "Jane",
+    "lastName": "Doe"
+  }'
+```
+
+```json Request body
+{
+  "bvn": "22211122233",
+  "firstName": "Jane",
+  "lastName": "Doe"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "bvn": "22211122233",
+    "result": "EXACT_MATCH",
+    "firstNameMatch": true,
+    "lastNameMatch": true
+  }
+}
+```

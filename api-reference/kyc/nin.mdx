@@ -1,0 +1,249 @@
+---
+title: "NIN Verification"
+description: "Verify a National Identification Number (NIN) using Zeeh or Interswitch as the data provider."
+---
+
+NIN verification endpoints allow you to look up identity details tied to an 11-digit National Identification Number. Each call consumes your KYC balance or quota based on your active plan.
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+---
+
+## Zeeh — NIN lookup
+
+Returns basic personal details for a NIN.
+
+```
+POST /api/v1/kyc/zee/nin
+```
+
+### Request body
+
+<ParamField body="nin" type="string" required>
+  The 11-digit National Identification Number to look up.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/zee/nin \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "nin": "12345678901" }'
+```
+
+```json Request body
+{ "nin": "12345678901" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "nin": "12345678901",
+    "firstName": "John",
+    "lastName": "Smith",
+    "middleName": "O",
+    "dateOfBirth": "1988-06-20",
+    "gender": "Male",
+    "phoneNumber": "081XXXXXXXX",
+    "address": "5 Allen Avenue, Ikeja, Lagos"
+  }
+}
+```
+
+---
+
+## Zeeh — NIN with face comparison
+
+Verify a NIN and compare the registered photo against an image you supply.
+
+```
+POST /api/v1/kyc/zee/nin/with-face
+```
+
+### Request body
+
+<ParamField body="nin" type="string" required>
+  The 11-digit NIN.
+</ParamField>
+
+<ParamField body="imageUrl" type="string" required>
+  Publicly accessible URL of the face image to compare against the NIN photo on record.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/zee/nin/with-face \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "nin": "12345678901",
+    "imageUrl": "https://your-cdn.example.com/selfie.jpg"
+  }'
+```
+
+```json Request body
+{
+  "nin": "12345678901",
+  "imageUrl": "https://your-cdn.example.com/selfie.jpg"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "nin": "12345678901",
+    "firstName": "John",
+    "lastName": "Smith",
+    "faceMatch": true,
+    "confidence": 96.3
+  }
+}
+```
+
+---
+
+## Interswitch — NIN boolean match
+
+Check whether a given name matches the name on file for a NIN. Returns `EXACT_MATCH` or `NO_MATCH`.
+
+```
+POST /api/v1/kyc/switch/nin
+```
+
+### Request body
+
+<ParamField body="nin" type="string" required>
+  The 11-digit NIN to verify.
+</ParamField>
+
+<ParamField body="firstName" type="string" required>
+  First name to match against the NIN record.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  Last name to match against the NIN record.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/nin \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "nin": "12345678901",
+    "firstName": "John",
+    "lastName": "Smith"
+  }'
+```
+
+```json Request body
+{
+  "nin": "12345678901",
+  "firstName": "John",
+  "lastName": "Smith"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "nin": "12345678901",
+    "result": "EXACT_MATCH",
+    "firstNameMatch": true,
+    "lastNameMatch": true
+  }
+}
+```
+
+---
+
+## Interswitch — Full NIN details
+
+Retrieve comprehensive NIN details via the Interswitch verification network.
+
+```
+POST /api/v1/kyc/switch/nin/full
+```
+
+### Request body
+
+<ParamField body="nin" type="string" required>
+  The 11-digit NIN.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/nin/full \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "nin": "12345678901" }'
+```
+
+```json Request body
+{ "nin": "12345678901" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "nin": "12345678901",
+    "firstName": "John",
+    "middleName": "O",
+    "lastName": "Smith",
+    "dateOfBirth": "1988-06-20",
+    "gender": "Male",
+    "phoneNumber": "081XXXXXXXX",
+    "address": "5 Allen Avenue, Ikeja, Lagos",
+    "stateOfOrigin": "Lagos",
+    "nationality": "Nigerian",
+    "educationalLevel": "BSc",
+    "employmentStatus": "Employed",
+    "photo": "data:image/jpeg;base64,/9j/4AAQSkZJRgAB..."
+  }
+}
+```

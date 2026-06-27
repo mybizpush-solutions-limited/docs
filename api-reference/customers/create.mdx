@@ -1,0 +1,230 @@
+---
+title: "Create Customer"
+description: "Create a customer record in your account, then list or retrieve customers by ID."
+---
+
+## Create customer
+
+Create a new customer associated with your API key. Customers can then be used for card payments, invoices, subscriptions, and virtual accounts.
+
+```
+POST /api/v1/customers
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Request body
+
+<ParamField body="firstName" type="string" required>
+  Customer's first name.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  Customer's last name.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Customer's email address. Must be a valid email format. Must be unique within your account.
+</ParamField>
+
+<ParamField body="phoneNumber" type="string" required>
+  Customer's phone number. Example: `"08012345678"`.
+</ParamField>
+
+<ParamField body="dateOfBirth" type="string">
+  Customer's date of birth in `YYYY-MM-DD` format. Optional.
+</ParamField>
+
+<ParamField body="address" type="string">
+  Customer's physical address. Optional.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/customers \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane.doe@example.com",
+    "phoneNumber": "08012345678",
+    "dateOfBirth": "1990-01-15",
+    "address": "12 Victoria Island, Lagos"
+  }'
+```
+
+```json Request body
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane.doe@example.com",
+  "phoneNumber": "08012345678",
+  "dateOfBirth": "1990-01-15",
+  "address": "12 Victoria Island, Lagos"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Customer created successfully",
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "customerId": "HYP_abc123def456gh78",
+    "clientId": "7e9a1b2c-3d4e-5f60-a7b8-c9d0e1f2a3b4",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane.doe@example.com",
+    "phoneNumber": "08012345678",
+    "dateOfBirth": "1990-01-15",
+    "address": "12 Victoria Island, Lagos",
+    "status": "active",
+    "metadata": {},
+    "createdAt": "2024-04-01T08:00:00Z",
+    "updatedAt": "2024-04-01T08:00:00Z"
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="data.id" type="string">
+  The internal UUID for this customer. Use this value as `customerId` in payment and subscription requests.
+</ResponseField>
+<ResponseField name="data.customerId" type="string">
+  A human-readable customer code in the format `HYP_xxxxxxxxxxxxxxxx`. Displayed in receipts and reports.
+</ResponseField>
+<ResponseField name="data.status" type="string">
+  Customer account status: `active`, `suspended`, or `inactive`.
+</ResponseField>
+<ResponseField name="data.accountNumber" type="string">
+  Virtual account number, if one has been created for this customer.
+</ResponseField>
+<ResponseField name="data.bankName" type="string">
+  Bank name for the customer's virtual account.
+</ResponseField>
+
+---
+
+## List customers
+
+Returns a paginated list of all customers associated with your API key.
+
+```
+GET /api/v1/customers
+```
+
+### Query parameters
+
+<ParamField query="page" type="integer">
+  Page number. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Results per page. Defaults to `20`.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by customer status. One of: `active`, `suspended`, `inactive`.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.hyparrow.com/api/v1/customers?page=1&limit=20&status=active' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "customerId": "HYP_abc123def456gh78",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "email": "jane.doe@example.com",
+      "phoneNumber": "08012345678",
+      "status": "active",
+      "createdAt": "2024-04-01T08:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+## Get customer
+
+Retrieve a single customer by their UUID.
+
+```
+GET /api/v1/customers/:id
+```
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  UUID of the customer to retrieve.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/customers/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "customerId": "HYP_abc123def456gh78",
+    "clientId": "7e9a1b2c-3d4e-5f60-a7b8-c9d0e1f2a3b4",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane.doe@example.com",
+    "phoneNumber": "08012345678",
+    "dateOfBirth": "1990-01-15",
+    "address": "12 Victoria Island, Lagos",
+    "status": "active",
+    "accountNumber": null,
+    "accountName": null,
+    "bankName": null,
+    "metadata": {},
+    "createdAt": "2024-04-01T08:00:00Z",
+    "updatedAt": "2024-04-01T08:00:00Z"
+  }
+}
+```

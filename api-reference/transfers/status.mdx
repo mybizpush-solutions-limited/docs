@@ -1,0 +1,114 @@
+---
+title: "Transfer Status"
+description: "Check the current status of a bank transfer using its transfer code."
+---
+
+Query the status of a previously initiated bank transfer. Pass the `TransferCode` returned when you called [Send Transfer](/api-reference/transfers/initiate).
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+## Endpoint
+
+This endpoint accepts both `GET` (query parameter) and `POST` (JSON body) requests.
+
+```
+GET  https://api.hyparrow.com/api/v1/transfers/status?reference={transferCode}
+POST https://api.hyparrow.com/api/v1/transfers/status
+```
+
+## Parameters
+
+<ParamField query="reference" type="string" required>
+  The `TransferCode` returned when the transfer was initiated.
+</ParamField>
+
+<Note>
+  When using `POST`, send `reference` as a JSON field in the request body instead of a query parameter.
+</Note>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the status check request succeeds.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Current status details for the transfer.
+  <Expandable title="data fields">
+    <ResponseField name="responseCode" type="string">
+      Provider response code. `"00"` indicates a completed successful transfer.
+    </ResponseField>
+    <ResponseField name="responseDescription" type="string">
+      Human-readable status (e.g., `Approved`, `Pending`, `Failed`).
+    </ResponseField>
+    <ResponseField name="transferCode" type="string">
+      The transfer code that was queried.
+    </ResponseField>
+    <ResponseField name="amount" type="string">
+      The transfer amount in kobo.
+    </ResponseField>
+    <ResponseField name="recipientAccount" type="string">
+      The destination account number.
+    </ResponseField>
+    <ResponseField name="recipientName" type="string">
+      The recipient's account name.
+    </ResponseField>
+    <ResponseField name="recipientBankCode" type="string">
+      The recipient's bank code.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl (GET)
+curl -X GET "https://api.hyparrow.com/api/v1/transfers/status?reference=14531707684123456" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+```bash curl (POST)
+curl -X POST https://api.hyparrow.com/api/v1/transfers/status \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret" \
+  -d '{
+    "reference": "14531707684123456"
+  }'
+```
+
+</CodeGroup>
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": {
+    "responseCode": "00",
+    "responseDescription": "Approved",
+    "transferCode": "14531707684123456",
+    "amount": "100000",
+    "recipientAccount": "0123456789",
+    "recipientName": "ADA CHIOMA OKAFOR",
+    "recipientBankCode": "058"
+  }
+}
+```
+
+### Error response
+
+```json
+{
+  "success": false,
+  "error": "Transfer status check failed: reference not found",
+  "data": null
+}
+```

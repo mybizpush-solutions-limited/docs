@@ -1,0 +1,265 @@
+---
+title: "Virtual Accounts"
+description: "Create dedicated bank account numbers for your customers to collect payments passively."
+---
+
+## Overview
+
+A virtual account is a dedicated Nigerian bank account number issued to a specific customer. When someone transfers money to that account number, Hyparrow detects the incoming payment and fires a webhook to your server — no polling required.
+
+**Common use cases:**
+
+<CardGroup cols={2}>
+  <Card title="Wallet top-ups" icon="wallet">
+    Give each user a personal account number they top up via bank transfer from any Nigerian bank.
+  </Card>
+  <Card title="Order payments" icon="receipt">
+    Issue a unique account per order so you can match payments automatically by account number.
+  </Card>
+  <Card title="Subscription billing" icon="calendar">
+    Let customers pay recurring fees by transferring to their dedicated account whenever they're ready.
+  </Card>
+  <Card title="B2B collections" icon="building">
+    Provide business clients a stable account number for invoice payments without manual reconciliation.
+  </Card>
+</CardGroup>
+
+---
+
+## How it works
+
+1. You create a **customer** record with the customer's name, email, and phone number.
+2. You provision a **virtual account** for that customer, specifying which bank should issue the account number.
+3. Hyparrow returns a real Nigerian bank account number (NUBAN) tied to that customer.
+4. When anyone transfers to that account, Hyparrow fires a **webhook** to your registered URL.
+
+---
+
+## Step-by-step guide
+
+<Steps>
+
+<Step title="Create a customer">
+
+Register the end-user in the Hyparrow system. This creates a customer record scoped to your API key.
+
+```bash
+POST https://api.hyparrow.com/api/v1/customers
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "firstName": "Amara",
+  "lastName": "Okonkwo",
+  "email": "amara.okonkwo@example.com",
+  "phoneNumber": "08012345678",
+  "dateOfBirth": "1990-05-20",
+  "address": "12 Broad Street, Lagos"
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "message": "Customer created successfully",
+  "data": {
+    "id": "d3f1a2b4-1234-5678-abcd-ef0123456789",
+    "customerId": "HYP_AbCdEfGhIjKl1234",
+    "clientId": "your-client-uuid",
+    "firstName": "Amara",
+    "lastName": "Okonkwo",
+    "email": "amara.okonkwo@example.com",
+    "phoneNumber": "08012345678",
+    "status": "active",
+    "createdAt": "2026-04-04T10:00:00Z"
+  }
+}
+```
+
+<Note>
+Save the returned `id` (UUID) — you'll use it to provision a virtual account and to retrieve the customer later.
+</Note>
+
+</Step>
+
+<Step title="Create a virtual account">
+
+Provision a bank account number for the customer. Specify the `bankCode` of the issuing bank.
+
+```bash
+POST https://api.hyparrow.com/api/v1/customers/virtual-account
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "customerId": "d3f1a2b4-1234-5678-abcd-ef0123456789",
+  "bankCode": "035"
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "message": "Virtual account created successfully",
+  "data": {
+    "id": "d3f1a2b4-1234-5678-abcd-ef0123456789",
+    "customerId": "HYP_AbCdEfGhIjKl1234",
+    "firstName": "Amara",
+    "lastName": "Okonkwo",
+    "accountNumber": "0123456789",
+    "accountName": "Hyparrow / Amara Okonkwo",
+    "bankCode": "035",
+    "bankName": "Wema Bank",
+    "status": "active"
+  }
+}
+```
+
+Display the `accountNumber` and `bankName` to your customer. They use these details to make bank transfers from any Nigerian bank.
+
+</Step>
+
+<Step title="Retrieve a customer">
+
+Fetch a customer's full profile including their virtual account details at any time.
+
+```bash
+GET https://api.hyparrow.com/api/v1/customers/d3f1a2b4-1234-5678-abcd-ef0123456789
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "d3f1a2b4-1234-5678-abcd-ef0123456789",
+    "customerId": "HYP_AbCdEfGhIjKl1234",
+    "firstName": "Amara",
+    "lastName": "Okonkwo",
+    "email": "amara.okonkwo@example.com",
+    "phoneNumber": "08012345678",
+    "status": "active",
+    "accountNumber": "0123456789",
+    "accountName": "Hyparrow / Amara Okonkwo",
+    "bankCode": "035",
+    "bankName": "Wema Bank"
+  }
+}
+```
+
+</Step>
+
+<Step title="Receive webhook on payment">
+
+When a transfer arrives at the virtual account, Hyparrow POSTs a webhook event to your registered URL. No polling needed.
+
+```json
+{
+  "event": "transaction.completed",
+  "data": {
+    "id": "txn-uuid",
+    "reference": "ISW_REF_0001",
+    "type": "virtual_account_credit",
+    "amount": 500000,
+    "currency": "NGN",
+    "status": "completed",
+    "customerId": "HYP_AbCdEfGhIjKl1234",
+    "accountNumber": "0123456789"
+  }
+}
+```
+
+Use the `customerId` or `accountNumber` in the payload to identify which customer made the payment and credit their balance in your system.
+
+</Step>
+
+</Steps>
+
+---
+
+## Endpoints reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/customers` | Create a customer |
+| `POST` | `/api/v1/customers/virtual-account` | Provision a virtual account for a customer |
+| `GET` | `/api/v1/customers/:id` | Retrieve a customer by ID |
+
+---
+
+## Customer fields
+
+<ParamField body="firstName" type="string" required>
+  Customer's first name.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  Customer's last name.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Customer's email address. Must be a valid email format.
+</ParamField>
+
+<ParamField body="phoneNumber" type="string" required>
+  Customer's phone number (e.g. `"08012345678"`).
+</ParamField>
+
+<ParamField body="dateOfBirth" type="string">
+  Optional. Date of birth in `YYYY-MM-DD` format.
+</ParamField>
+
+<ParamField body="address" type="string">
+  Optional. Customer's postal address.
+</ParamField>
+
+---
+
+## Virtual account fields
+
+<ParamField body="customerId" type="string" required>
+  The UUID `id` of an existing customer returned from `POST /api/v1/customers`.
+</ParamField>
+
+<ParamField body="bankCode" type="string" required>
+  The bank code of the issuing institution. Use the bank list from `GET /api/v1/transfers/banks` to find valid codes.
+</ParamField>
+
+---
+
+## Customer response fields
+
+<ResponseField name="id" type="string">
+  UUID primary key for the customer record.
+</ResponseField>
+
+<ResponseField name="customerId" type="string">
+  Hyparrow-generated customer code in the format `HYP_XXXXXXXXXXXXXXXX`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Customer status: `active`, `suspended`, or `inactive`.
+</ResponseField>
+
+<ResponseField name="accountNumber" type="string">
+  10-digit NUBAN virtual account number. Present after a virtual account has been provisioned.
+</ResponseField>
+
+<ResponseField name="bankName" type="string">
+  Human-readable name of the issuing bank.
+</ResponseField>
+
+

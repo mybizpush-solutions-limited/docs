@@ -1,0 +1,139 @@
+---
+title: "API Keys"
+description: "Create and manage API keys to authenticate your integration with Hyparrow."
+---
+
+Every request to the Hyparrow API must be authenticated with an API key and secret. You create these from your dashboard after your account is active.
+
+## Key types
+
+Hyparrow issues two types of API keys:
+
+| Type | Value | Use case |
+|------|-------|----------|
+| `test` | `pk_...` prefix | Development and testing — no real money moves |
+| `live` | `pk_...` prefix | Production — processes real transactions |
+
+<Warning>
+  Your API secret (`sk_...`) is shown only once at creation time. Store it securely in an environment variable — you cannot retrieve it again.
+</Warning>
+
+## Create an API key
+
+You need a valid JWT token from [logging in](/api-reference/auth/login) before you can create an API key.
+
+```bash
+curl -X POST https://api.hyparrow.com/api/v1/api-keys/create \
+  -H "Authorization: Bearer <your_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Production Key",
+    "keyType": "live",
+    "webhookUrl": "https://yourapp.com/webhooks/hyparrow",
+    "allowedIps": ["203.0.113.10"],
+    "rateLimit": 100,
+    "expiresInDays": 365
+  }'
+```
+
+<ParamField body="name" type="string" required>
+  A label for this key, e.g. "Production" or "Staging".
+</ParamField>
+
+<ParamField body="keyType" type="string" required>
+  Either `test` or `live`.
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  URL where Hyparrow will POST webhook events for transactions on this key.
+</ParamField>
+
+<ParamField body="allowedIps" type="array">
+  List of IP addresses permitted to use this key. Omit or use `["0.0.0.0"]` to allow any IP.
+</ParamField>
+
+<ParamField body="rateLimit" type="integer">
+  Maximum requests per rate-limit window. Defaults to 100.
+</ParamField>
+
+<ParamField body="expiresInDays" type="integer">
+  Days until the key expires. Omit for no expiry.
+</ParamField>
+
+**Response**
+
+```json
+{
+  "success": true,
+  "message": "API key created successfully. Please save the secret key - it won't be shown again.",
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "My Production Key",
+    "apiKey": "pk_abc123...",
+    "apiSecret": "sk_xyz789...",
+    "keyType": "live",
+    "status": "active",
+    "webhookUrl": "https://yourapp.com/webhooks/hyparrow",
+    "allowedIps": ["203.0.113.10"],
+    "rateLimit": 100,
+    "expiresAt": "2027-04-04T00:00:00Z",
+    "createdAt": "2026-04-04T10:00:00Z"
+  }
+}
+```
+
+<Note>
+  Save the `apiSecret` value immediately. It is not stored in recoverable form and will not appear again.
+</Note>
+
+## Using your credentials
+
+Pass your API key and secret as headers on every request:
+
+```bash
+curl https://api.hyparrow.com/api/v1/bills/categories \
+  -H "X-API-Key: pk_abc123..." \
+  -H "X-API-Secret: sk_xyz789..."
+```
+
+Both headers are required. Omitting either returns a `401 Unauthorized` error.
+
+## List API keys
+
+```bash
+curl https://api.hyparrow.com/api/v1/api-keys \
+  -H "Authorization: Bearer <your_jwt_token>"
+```
+
+Returns all keys for your account. The `apiSecret` is not included in list responses.
+
+## Revoke an API key
+
+```bash
+curl -X DELETE https://api.hyparrow.com/api/v1/api-keys/<key_id> \
+  -H "Authorization: Bearer <your_jwt_token>"
+```
+
+Revoking a key immediately invalidates it. Any in-flight requests using that key will fail.
+
+## IP whitelisting
+
+If you set `allowedIps`, only requests originating from those IP addresses will be accepted. Requests from other IPs receive a `403 Forbidden` response that includes your current IP:
+
+```json
+{
+  "success": false,
+  "error": "IP address not allowed",
+  "yourIP": "1.2.3.4"
+}
+```
+
+Use `"0.0.0.0"` as a wildcard to allow all IPs while still benefiting from key/secret authentication.
+
+## Key statuses
+
+| Status | Meaning |
+|--------|---------|
+| `active` | Key works normally |
+| `suspended` | Temporarily disabled |
+| `revoked` | Permanently disabled — cannot be reactivated |

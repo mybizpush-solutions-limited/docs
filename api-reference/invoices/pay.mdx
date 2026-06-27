@@ -1,0 +1,307 @@
+---
+title: "Collect Payment"
+description: "Generate a virtual account for an invoice, check payment status, send the invoice by email, and download PDF copies."
+---
+
+## Generate virtual account
+
+Create a temporary virtual account (VA) tied to the exact invoice amount. Your customer transfers funds to this account number and payment is automatically matched to the invoice.
+
+```
+POST /api/v1/invoices/:invoiceId/generate-va
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Path parameters
+
+<ParamField path="invoiceId" type="string" required>
+  UUID of the invoice for which to generate a virtual account.
+</ParamField>
+
+### Request body
+
+<ParamField body="expiryMinutes" type="integer" required>
+  How long the virtual account stays active. Must be one of `10`, `15`, or `30` minutes. The customer must pay the exact invoice amount within this window.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/invoices/3fa85f64-5717-4562-b3fc-2c963f66afa6/generate-va \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "expiryMinutes": 30
+  }'
+```
+
+```json Request body
+{
+  "expiryMinutes": 30
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Virtual account generated — pay the exact amount before it expires",
+  "data": {
+    "id": "va-uuid-1234",
+    "invoiceId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "accountNumber": "0123456789",
+    "accountName": "Acme Corp / Jane Doe",
+    "bankCode": "000013",
+    "bankName": "GTBank",
+    "expiresAt": "2024-04-23T11:00:00Z",
+    "isActive": true,
+    "createdAt": "2024-04-23T10:30:00Z"
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="data.accountNumber" type="string">
+  The virtual account number the customer should transfer to.
+</ResponseField>
+<ResponseField name="data.accountName" type="string">
+  The account name associated with this virtual account.
+</ResponseField>
+<ResponseField name="data.bankName" type="string">
+  The bank name for the virtual account.
+</ResponseField>
+<ResponseField name="data.expiresAt" type="string">
+  ISO 8601 timestamp after which the virtual account becomes inactive.
+</ResponseField>
+<ResponseField name="data.isActive" type="boolean">
+  `true` while the account is accepting payments.
+</ResponseField>
+
+---
+
+## Get virtual account
+
+Retrieve the currently active virtual account for an invoice.
+
+```
+GET /api/v1/invoices/:invoiceId/va
+```
+
+### Path parameters
+
+<ParamField path="invoiceId" type="string" required>
+  UUID of the invoice.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/invoices/3fa85f64-5717-4562-b3fc-2c963f66afa6/va \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "id": "va-uuid-1234",
+    "invoiceId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "accountNumber": "0123456789",
+    "accountName": "Acme Corp / Jane Doe",
+    "bankCode": "000013",
+    "bankName": "GTBank",
+    "expiresAt": "2024-04-23T11:00:00Z",
+    "isActive": true
+  }
+}
+```
+
+---
+
+## Get invoice status
+
+Check whether an invoice has been paid.
+
+```
+GET /api/v1/invoices/:invoiceId/status
+```
+
+### Path parameters
+
+<ParamField path="invoiceId" type="string" required>
+  UUID of the invoice.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/invoices/3fa85f64-5717-4562-b3fc-2c963f66afa6/status \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "status": "paid",
+    "paidAt": "2024-04-23T10:45:00Z",
+    "totalAmount": 430000,
+    "currency": "NGN"
+  }
+}
+```
+
+---
+
+## Send invoice by email
+
+Email the invoice PDF to the customer's registered email address.
+
+```
+POST /api/v1/invoices/:invoiceId/send-email
+```
+
+### Path parameters
+
+<ParamField path="invoiceId" type="string" required>
+  UUID of the invoice to send.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/invoices/3fa85f64-5717-4562-b3fc-2c963f66afa6/send-email \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "message": "Invoice emailed to jane@example.com"
+}
+```
+
+---
+
+## Download invoice PDF
+
+Download the invoice as a PDF file.
+
+```
+GET /api/v1/invoices/:invoiceId/download
+```
+
+### Path parameters
+
+<ParamField path="invoiceId" type="string" required>
+  UUID of the invoice to download.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/invoices/3fa85f64-5717-4562-b3fc-2c963f66afa6/download \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --output invoice.pdf
+```
+
+Returns a binary PDF with `Content-Type: application/pdf` and `Content-Disposition: attachment; filename=invoice.pdf`.
+
+---
+
+## Get receipt
+
+Retrieve the payment receipt object for a paid invoice.
+
+```
+GET /api/v1/invoices/:invoiceId/receipt
+```
+
+### Path parameters
+
+<ParamField path="invoiceId" type="string" required>
+  UUID of the invoice. The invoice must be in `paid` status.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/invoices/3fa85f64-5717-4562-b3fc-2c963f66afa6/receipt \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "id": "rcpt-uuid-5678",
+    "invoiceId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "amount": 430000,
+    "currency": "NGN",
+    "paidAt": "2024-04-23T10:45:00Z",
+    "payerName": "Jane Doe",
+    "reference": "VA-PAY-20240423"
+  }
+}
+```
+
+---
+
+## Download receipt PDF
+
+Download a branded PDF receipt for a paid invoice.
+
+```
+GET /api/v1/invoices/:invoiceId/download-receipt
+```
+
+### Path parameters
+
+<ParamField path="invoiceId" type="string" required>
+  UUID of the invoice. The invoice must be in `paid` status.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/invoices/3fa85f64-5717-4562-b3fc-2c963f66afa6/download-receipt \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --output receipt.pdf
+```
+
+Returns a binary PDF with `Content-Type: application/pdf` and `Content-Disposition: attachment; filename=receipt-invoice-hpw-000000001.pdf`.

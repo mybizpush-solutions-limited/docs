@@ -1,0 +1,184 @@
+---
+title: "OPay Payments"
+description: "Collect payments via OPay wallets using the Interswitch OPay collection channel."
+---
+
+## Overview
+
+The OPay payment channel lets you collect money from customers who have an OPay wallet. You initialize a transaction on your server, redirect the customer to the OPay payment page, and receive a webhook when payment settles.
+
+This channel is powered by Interswitch's OPay collection integration and follows an asynchronous flow — the `initialize` response gives you a redirect URL, not a payment confirmation.
+
+---
+
+## How it works
+
+1. Your server calls `POST /api/v1/payments/opay/initialize` with the amount and a transaction reference.
+2. Hyparrow returns a `redirectUrl`.
+3. You redirect the customer's browser to that URL.
+4. The customer completes payment in the OPay interface.
+5. Hyparrow fires a webhook to your registered URL when the payment settles.
+6. You can also poll `POST /api/v1/payments/opay/status` at any time to check the outcome.
+
+<Note>
+A `responseCode` of `"09"` in the initialize response is normal — it means the transaction is pending and the customer needs to complete payment at the redirect URL. Only `"00"` means the transaction completed without a redirect.
+</Note>
+
+---
+
+## Step-by-step guide
+
+<Steps>
+
+<Step title="Initialize the payment">
+
+Create an OPay transaction and get the redirect URL for the customer.
+
+```bash
+POST https://api.hyparrow.com/api/v1/payments/opay/initialize
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "amount": 500000,
+  "transactionReference": "ORDER-20260404-00077",
+  "currency": "NGN"
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "message": "OPay payment initialized. Redirect the customer to the provided URL.",
+  "redirectUrl": "https://opay.ng/pay?ref=ORDER-20260404-00077&token=abc123",
+  "transactionReference": "ORDER-20260404-00077",
+  "responseCode": "09"
+}
+```
+
+Redirect the customer to `redirectUrl`. Save `transactionReference` for status checks and webhook matching.
+
+<Note>
+`amount` is in **kobo** as an integer. ₦5,000 = `500000`.
+</Note>
+
+</Step>
+
+<Step title="Receive the webhook">
+
+When the customer completes payment, Hyparrow POSTs an event to your webhook URL.
+
+```json
+{
+  "event": "transaction.completed",
+  "data": {
+    "reference": "ORDER-20260404-00077",
+    "type": "opay_payment",
+    "amount": 500000,
+    "currency": "NGN",
+    "status": "completed",
+    "channel": "opay",
+    "responseCode": "00"
+  }
+}
+```
+
+Match `reference` against your `transactionReference` and fulfill the order.
+
+</Step>
+
+<Step title="Check payment status">
+
+You can poll for the status of an OPay transaction at any time using the transaction reference.
+
+```bash
+POST https://api.hyparrow.com/api/v1/payments/opay/status
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "reference": "ORDER-20260404-00077"
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "transactionReference": "ORDER-20260404-00077",
+  "responseCode": "00",
+  "paid": true
+}
+```
+
+When `paid` is `true` and `responseCode` is `"00"`, the payment has been confirmed. Any other `responseCode` indicates the payment is still pending or has failed.
+
+</Step>
+
+</Steps>
+
+---
+
+## Endpoints reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/payments/opay/initialize` | Initialize an OPay payment |
+| `POST` | `/api/v1/payments/opay/status` | Check OPay payment status |
+
+---
+
+## Initialize request body
+
+<ParamField body="amount" type="integer" required>
+  Amount in **kobo** as an integer (e.g. `500000` for ₦5,000). Either `amount` or `paymentId` must be provided.
+</ParamField>
+
+<ParamField body="paymentId" type="integer">
+  Interswitch payment ID, if you are referencing an existing Interswitch payment object instead of specifying a raw amount.
+</ParamField>
+
+<ParamField body="transactionReference" type="string">
+  Your unique reference for this transaction. If omitted, Hyparrow generates one automatically. Store this value to match against webhooks and status checks.
+</ParamField>
+
+<ParamField body="payableCode" type="string">
+  Interswitch payable code if applicable. Leave blank for standard OPay collections.
+</ParamField>
+
+<ParamField body="currency" type="string">
+  Currency code. Defaults to `"NGN"`.
+</ParamField>
+
+---
+
+## Status request body
+
+<ParamField body="reference" type="string" required>
+  The `transactionReference` returned from the initialize call.
+</ParamField>
+
+---
+
+## Status response fields
+
+<ResponseField name="transactionReference" type="string">
+  The reference that was checked.
+</ResponseField>
+
+<ResponseField name="responseCode" type="string">
+  Interswitch response code. `"00"` = paid, `"09"` = pending, other values = failed.
+</ResponseField>
+
+<ResponseField name="paid" type="boolean">
+  `true` when `responseCode` is `"00"` and payment is confirmed.
+</ResponseField>

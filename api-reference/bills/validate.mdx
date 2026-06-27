@@ -1,0 +1,116 @@
+---
+title: "Validate Customer"
+description: "Verify a customer's details against a biller before initiating a payment."
+---
+
+Call this endpoint before paying a bill to confirm that the customer ID is valid for the selected service. This prevents failed payments caused by incorrect meter numbers, decoder IDs, or phone numbers.
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+## Endpoint
+
+```
+GET https://api.hyparrow.com/api/v1/bills/validate?customerId={id}&serviceId={id}
+```
+
+## Query parameters
+
+<ParamField query="customerId" type="string" required>
+  The customer's identifier for the service. This varies by biller type:
+  - **Airtime / data**: the phone number (e.g., `08012345678`)
+  - **Electricity**: the meter number
+  - **Cable TV**: the smartcard or IUC number
+  - **Internet**: the account number
+</ParamField>
+
+<ParamField query="serviceId" type="string" required>
+  The biller ID for the service you intend to pay. Retrieve this from the [List Services](/api-reference/bills/services) endpoint.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the customer is found and the details are valid.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Customer details returned by the biller.
+  <Expandable title="data fields">
+    <ResponseField name="customerId" type="string">
+      The customer ID that was validated.
+    </ResponseField>
+    <ResponseField name="customerName" type="string">
+      The full name associated with the customer ID.
+    </ResponseField>
+    <ResponseField name="customerAddress" type="string">
+      The customer's address registered with the biller, if available.
+    </ResponseField>
+    <ResponseField name="customerEmail" type="string">
+      The customer's email registered with the biller, if available.
+    </ResponseField>
+    <ResponseField name="customerPhone" type="string">
+      The customer's phone number registered with the biller, if available.
+    </ResponseField>
+    <ResponseField name="amount" type="string">
+      Outstanding balance or minimum required amount in kobo, if applicable.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  An error message when validation fails. Empty on success.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl (electricity meter)
+curl -X GET "https://api.hyparrow.com/api/v1/bills/validate?customerId=45678901234&serviceId=BIL150" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+```bash curl (cable TV)
+curl -X GET "https://api.hyparrow.com/api/v1/bills/validate?customerId=7042912345&serviceId=BIL135" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+</CodeGroup>
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": {
+    "customerId": "45678901234",
+    "customerName": "Ada Okafor",
+    "customerAddress": "12 Adeola Odeku Street, Lagos",
+    "customerEmail": "",
+    "customerPhone": "08012345678",
+    "amount": "0"
+  },
+  "error": ""
+}
+```
+
+### Error response
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Invalid customer ID"
+}
+```
+
+<Tip>
+  Always validate a customer before calling [Pay Bill](/api-reference/bills/pay). A successful validation response confirms the payment will reach the correct account.
+</Tip>

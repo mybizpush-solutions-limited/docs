@@ -1,0 +1,188 @@
+---
+title: "Verify Email"
+description: "Verify your email address with the OTP sent after signup, and resend a new OTP if needed."
+---
+
+After creating an account, Hyparrow sends a 6-digit OTP to your email. Submitting that OTP to this endpoint confirms your address, activates your account, and returns a JWT so you can start making authenticated requests immediately.
+
+## Verify email
+
+### Endpoint
+
+```
+POST https://api.hyparrow.com/api/v1/auth/verify-email
+```
+
+### Request body
+
+<ParamField body="email" type="string" required>
+  The email address you registered with.
+</ParamField>
+
+<ParamField body="otp" type="string" required>
+  The 6-digit verification code sent to your email. OTPs expire after 10 minutes.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the OTP is valid and the email is confirmed.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable confirmation string.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="data fields">
+    <ResponseField name="token" type="string">
+      A signed JWT valid for 24 hours. Use this as your `Authorization: Bearer <token>` header.
+    </ResponseField>
+    <ResponseField name="user" type="object">
+      <Expandable title="user fields">
+        <ResponseField name="id" type="string">
+          The user's UUID.
+        </ResponseField>
+        <ResponseField name="firstName" type="string">
+          The user's first name.
+        </ResponseField>
+        <ResponseField name="lastName" type="string">
+          The user's last name.
+        </ResponseField>
+        <ResponseField name="email" type="string">
+          The user's email address.
+        </ResponseField>
+        <ResponseField name="country" type="string">
+          ISO 3166-1 alpha-2 country code.
+        </ResponseField>
+        <ResponseField name="role" type="string">
+          Your account role.
+        </ResponseField>
+        <ResponseField name="accountType" type="string">
+          Either `personal` or `business`.
+        </ResponseField>
+        <ResponseField name="accountStatus" type="string">
+          `active` after successful verification.
+        </ResponseField>
+        <ResponseField name="kycStatus" type="string">
+          One of `not_started`, `in_progress`, `pending_review`, `approved`, or `rejected`.
+        </ResponseField>
+        <ResponseField name="emailVerified" type="boolean">
+          `true` after successful verification.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/auth/verify-email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ada.okafor@example.com",
+    "otp": "482916"
+  }'
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "message": "Email verified successfully",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkYS5va2Fmb3JAZXhhbXBsZS5jb20iLCJleHAiOjE3MDAwMDAwMDAsImlhdCI6MTY5OTkxMzYwMCwicm9sZSI6InVzZXIiLCJ1c2VySWQiOiJhMWIyYzNkNC1lNWY2LTc4OTAtYWJjZC1lZjEyMzQ1Njc4OTAifQ.signature",
+    "user": {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "firstName": "Ada",
+      "lastName": "Okafor",
+      "email": "ada.okafor@example.com",
+      "country": "NG",
+      "role": "user",
+      "accountType": "business",
+      "accountStatus": "active",
+      "kycStatus": "not_started",
+      "emailVerified": true
+    }
+  }
+}
+```
+
+#### Error response
+
+```json
+{
+  "success": false,
+  "error": "invalid or expired OTP"
+}
+```
+
+---
+
+## Resend OTP
+
+If the OTP expired or was not delivered, use this endpoint to send a fresh code to your email address.
+
+### Endpoint
+
+```
+POST https://api.hyparrow.com/api/v1/auth/resend-otp
+```
+
+### Request body
+
+<ParamField body="email" type="string" required>
+  The email address associated with your unverified account.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the new OTP is sent successfully.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Confirmation that the OTP was sent.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/auth/resend-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ada.okafor@example.com"
+  }'
+```
+
+</CodeGroup>
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "message": "OTP sent successfully"
+}
+```
+
+#### Error response
+
+```json
+{
+  "success": false,
+  "error": "email already verified"
+}
+```
+
+<Warning>
+  Each OTP is valid for 10 minutes. Requesting a new OTP does not invalidate previously sent codes; the most recently issued valid code will be accepted.
+</Warning>

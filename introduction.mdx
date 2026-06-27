@@ -1,0 +1,89 @@
+---
+title: "Introduction"
+description: "Hyparrow is a white-label payment gateway API for developers who need bill payments, bank transfers, virtual accounts, and more."
+---
+
+## What is Hyparrow?
+
+Hyparrow is a payment gateway API that lets you embed financial services directly into your product. You create an account, complete KYC, generate API keys, and start moving money — without building payment infrastructure from scratch.
+
+Hyparrow handles the underlying connections to payment networks, banks, and billing systems. You call the API; Hyparrow does the rest.
+
+## Who is it for?
+
+Hyparrow is designed for developers and product teams building:
+
+- Fintech applications that need to collect payments or disburse funds
+- Platforms that want to offer bill payment (utilities, airtime, data) to their users
+- Businesses that invoice clients and need programmatic payment tracking
+- Any product that needs virtual accounts, bank transfers, or card payments as a feature
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Bill Payments" icon="receipt">
+    Pay electricity, cable TV, airtime, data, and hundreds of other billers through a single API.
+  </Card>
+  <Card title="Bank Transfers" icon="building-columns">
+    Initiate outbound bank transfers to any Nigerian bank account. Look up account names before sending.
+  </Card>
+  <Card title="Virtual Accounts" icon="vault">
+    Assign dedicated virtual account numbers to your customers. Deposits credit your wallet automatically.
+  </Card>
+  <Card title="Card Payments" icon="credit-card">
+    Accept card payments from customers via checkout links or direct API integration.
+  </Card>
+  <Card title="Invoicing" icon="file-invoice">
+    Create and send invoices. Customers can pay via virtual account, USSD, OPay, or card.
+  </Card>
+  <Card title="Webhooks" icon="webhook">
+    Receive real-time notifications for every completed transaction on your webhook URL.
+  </Card>
+  <Card title="Customer Management" icon="users">
+    Create and manage customer records with dedicated virtual accounts per customer.
+  </Card>
+  <Card title="KYC Verification" icon="id-card">
+    Verify BVN, NIN, CAC, drivers licence, and more through a unified verification API.
+  </Card>
+</CardGroup>
+
+## Base URL
+
+All API requests go to:
+
+```
+https://api.hyparrow.com
+```
+
+All endpoints are versioned under `/api/v1/`.
+
+## Response format
+
+Every response follows a consistent envelope:
+
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+Errors return `"success": false` with an `"error"` string:
+
+```json
+{
+  "success": false,
+  "error": "invalid email or password"
+}
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Make your first API call in five steps.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how API key and JWT auth work.
+  </Card>
+</CardGroup>

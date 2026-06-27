@@ -1,0 +1,99 @@
+---
+title: "Sign Up"
+description: "Create a new Hyparrow account to start accepting payments."
+---
+
+Use this endpoint to register a new user account. After a successful signup, a 6-digit OTP is sent to the provided email address. You must verify your email before you can log in.
+
+## Endpoint
+
+```
+POST https://api.hyparrow.com/api/v1/auth/signup
+```
+
+## Request body
+
+<ParamField body="firstName" type="string" required>
+  The user's first name. Must contain only valid name characters.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  The user's last name. Must contain only valid name characters.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  A valid email address. Must be unique — accounts with duplicate emails are rejected.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The account password. Must be at least 8 characters long.
+</ParamField>
+
+<ParamField body="country" type="string" required>
+  ISO 3166-1 alpha-2 country code (exactly 2 uppercase characters). Example: `NG`, `US`, `GB`.
+</ParamField>
+
+<ParamField body="accountType" type="string" required>
+  The type of account to create. Accepted values: `personal`, `business`.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the account is created successfully.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="data fields">
+    <ResponseField name="message" type="string">
+      A human-readable confirmation message.
+    </ResponseField>
+    <ResponseField name="userId" type="string">
+      The UUID of the newly created user account.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Ada",
+    "lastName": "Okafor",
+    "email": "ada.okafor@example.com",
+    "password": "SecurePass123",
+    "country": "NG",
+    "accountType": "business"
+  }'
+```
+
+</CodeGroup>
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": {
+    "message": "User created successfully. Please verify your email.",
+    "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  }
+}
+```
+
+### Error response
+
+```json
+{
+  "success": false,
+  "error": "email already registered"
+}
+```
+
+<Note>
+  After signup, check your inbox for a 6-digit OTP. The code expires in 10 minutes. Use the [Verify Email](/api-reference/auth/verify-email) endpoint to confirm your address before logging in.
+</Note>

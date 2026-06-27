@@ -1,0 +1,216 @@
+---
+title: "Webhooks"
+description: "Receive real-time payment notifications on your server using HMAC-verified webhook events."
+---
+
+Webhooks let Hyparrow notify your server when a payment completes asynchronously — such as a virtual account deposit, USSD payment, or OPay collection. Instead of polling for status, configure a webhook URL and Hyparrow will POST the event to you.
+
+## How it works
+
+<Steps>
+  <Step title="Configure your webhook URL">
+    Set a public HTTPS endpoint on your server where Hyparrow can POST events.
+  </Step>
+  <Step title="Generate a webhook secret">
+    Generate a signing secret. Hyparrow uses it to sign every payload with HMAC-SHA512.
+  </Step>
+  <Step title="Verify incoming requests">
+    On your server, verify the `X-Hyparrow-Signature` header before processing the event.
+  </Step>
+  <Step title="Respond with 200">
+    Return HTTP `200` immediately. Hyparrow does not resend if your server responds slowly.
+  </Step>
+</Steps>
+
+## Configure your webhook URL
+
+```bash
+curl -X PUT https://api.hyparrow.com/api/v1/webhook-settings \
+  -H "X-API-Key: pk_abc123..." \
+  -H "X-API-Secret: sk_xyz789..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "webhookUrl": "https://yourapp.com/webhooks/hyparrow",
+    "allowedIps": []
+  }'
+```
+
+<ParamField body="webhookUrl" type="string" required>
+  The HTTPS URL on your server that will receive webhook POSTs.
+</ParamField>
+
+<ParamField body="allowedIps" type="array">
+  Optional list of IP addresses to restrict webhook delivery from. Leave empty to allow all.
+</ParamField>
+
+## Generate a webhook secret
+
+```bash
+curl -X POST https://api.hyparrow.com/api/v1/webhook-settings/generate-secret \
+  -H "X-API-Key: pk_abc123..." \
+  -H "X-API-Secret: sk_xyz789..."
+```
+
+```json
+{
+  "success": true,
+  "message": "Webhook secret generated successfully. Store this securely - it will not be shown again.",
+  "data": {
+    "secret": "a3f8c2d1e9b04567..."
+  }
+}
+```
+
+<Warning>
+  The secret is shown once. Store it securely as an environment variable. If lost, generate a new one — the old one becomes invalid.
+</Warning>
+
+## Verify webhook signatures
+
+Every webhook Hyparrow sends includes an `X-Hyparrow-Signature` header containing an HMAC-SHA512 hex digest of the raw request body signed with your webhook secret.
+
+<CodeGroup>
+```javascript Node.js
+const crypto = require('crypto');
+
+function verifyWebhook(rawBody, signature, secret) {
+  const expected = crypto
+    .createHmac('sha512', secret)
+    .update(rawBody)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(expected),
+    Buffer.from(signature)
+  );
+}
+
+// Express example
+app.post('/webhooks/hyparrow', express.raw({ type: '*/*' }), (req, res) => {
+  const sig = req.headers['x-hyparrow-signature'];
+  if (!verifyWebhook(req.body, sig, process.env.HYPARROW_WEBHOOK_SECRET)) {
+    return res.status(401).send('Invalid signature');
+  }
+  const event = JSON.parse(req.body);
+  // handle event...
+  res.sendStatus(200);
+});
+```
+
+```python Python
+import hmac
+import hashlib
+
+def verify_webhook(raw_body: bytes, signature: str, secret: str) -> bool:
+    expected = hmac.new(
+        secret.encode(), raw_body, hashlib.sha512
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)
+
+# Flask example
+@app.route('/webhooks/hyparrow', methods=['POST'])
+def webhook():
+    sig = request.headers.get('X-Hyparrow-Signature', '')
+    if not verify_webhook(request.get_data(), sig, os.environ['HYPARROW_WEBHOOK_SECRET']):
+        return 'Invalid signature', 401
+    event = request.get_json(force=True)
+    # handle event...
+    return '', 200
+```
+
+```go Go
+import (
+    "crypto/hmac"
+    "crypto/sha512"
+    "encoding/hex"
+)
+
+func verifyWebhook(body []byte, signature, secret string) bool {
+    mac := hmac.New(sha512.New, []byte(secret))
+    mac.Write(body)
+    expected := hex.EncodeToString(mac.Sum(nil))
+    return hmac.Equal([]byte(expected), []byte(signature))
+}
+```
+</CodeGroup>
+
+<Warning>
+  Always read the raw request body **before** parsing JSON. Parsing first will alter the bytes and cause signature verification to fail.
+</Warning>
+
+## Webhook events
+
+### `customer.transaction.completed`
+
+Fired when a payment is received on a customer's virtual account.
+
+```json
+{
+  "event": "customer.transaction.completed",
+  "timestamp": 1712227200,
+  "data": {
+    "transactionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "customerId": "a1b2c3d4-...",
+    "customer": {
+      "id": "a1b2c3d4-...",
+      "firstName": "Amina",
+      "lastName": "Okafor",
+      "email": "amina@example.com",
+      "phoneNumber": "08012345678"
+    },
+    "amount": 500000,
+    "currency": "NGN",
+    "reference": "MRC2319123456789",
+    "description": "Customer deposit from John Doe via Amina Okafor",
+    "status": "completed",
+    "provider": "interswitch",
+    "channel": "NIP",
+    "senderName": "John Doe",
+    "responseCode": "00",
+    "responseMessage": "Approved",
+    "completedAt": "2026-04-04T10:00:00Z",
+    "metadata": {}
+  }
+}
+```
+
+<Note>
+  `amount` is in **kobo**. Divide by 100 to get the naira value (e.g., `500000` = ₦5,000).
+</Note>
+
+## Get current settings
+
+```bash
+curl https://api.hyparrow.com/api/v1/webhook-settings \
+  -H "X-API-Key: pk_abc123..." \
+  -H "X-API-Secret: sk_xyz789..."
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "webhookUrl": "https://yourapp.com/webhooks/hyparrow",
+    "allowedIps": [],
+    "hasSecret": true,
+    "secretMasked": "a3f8c2d1...567fab90"
+  }
+}
+```
+
+## Send a test webhook
+
+Verify your endpoint is reachable before going live:
+
+```bash
+curl -X POST https://api.hyparrow.com/api/v1/webhook-settings/test \
+  -H "X-API-Key: pk_abc123..." \
+  -H "X-API-Secret: sk_xyz789..."
+```
+
+## Best practices
+
+<Tip>
+  - Return `200` as fast as possible. Handle processing asynchronously in a background job.
+  - Check for duplicate events using `data.transactionId` — the same event can be delivered more than once.
+  - Always verify the signature before acting on a webhook payload.
+</Tip>

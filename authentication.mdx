@@ -1,0 +1,231 @@
+---
+title: "Authentication"
+description: "Hyparrow supports API key authentication for server integrations and JWT authentication for dashboard sessions."
+---
+
+## Overview
+
+Hyparrow has two authentication methods:
+
+| Method | Header | When to use |
+|--------|--------|-------------|
+| **API Key** | `X-API-Key` + `X-API-Secret` | Server-side integrations, programmatic API calls |
+| **JWT** | `Authorization: Bearer <token>` | Dashboard sessions, user-facing flows |
+
+Most integrations use **API key auth**. JWT auth is primarily for the Hyparrow dashboard and user account management endpoints.
+
+---
+
+## API key authentication
+
+Pass both headers on every request:
+
+```bash
+X-API-Key: pk_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789012
+X-API-Secret: sk_AbCdEfGhIjKlMnOpQrStUvWxYz01234567890123456789012345678901234
+```
+
+Both headers are required. If either is missing, the request is rejected.
+
+<CodeGroup>
+```bash curl
+curl https://api.hyparrow.com/api/v1/transactions/ \
+  -H "X-API-Key: pk_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789012" \
+  -H "X-API-Secret: sk_AbCdEfGhIjKlMnOpQrStUvWxYz01234567890123456789012345678901234"
+```
+
+```javascript Node.js
+const response = await fetch('https://api.hyparrow.com/api/v1/transactions/', {
+  headers: {
+    'X-API-Key': process.env.HYPARROW_API_KEY,
+    'X-API-Secret': process.env.HYPARROW_API_SECRET,
+  },
+});
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.hyparrow.com/api/v1/transactions/',
+    headers={
+        'X-API-Key': os.environ['HYPARROW_API_KEY'],
+        'X-API-Secret': os.environ['HYPARROW_API_SECRET'],
+    }
+)
+```
+</CodeGroup>
+
+### API key format
+
+API keys begin with `pk_` and API secrets begin with `sk_`:
+
+```
+pk_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789012   ← API Key (public identifier)
+sk_AbCdEfGhIjKlMnOpQrStUvWxYz01234567890123456789012345678901234  ← API Secret (keep private)
+```
+
+The API secret is hashed server-side immediately after creation. **It cannot be retrieved after the initial creation response.** Store it securely.
+
+### Error responses for API key auth
+
+<ResponseField name="401 — Missing credentials">
+Both `X-API-Key` and `X-API-Secret` must be present.
+
+```json
+{
+  "success": false,
+  "error": "Missing API credentials"
+}
+```
+</ResponseField>
+
+<ResponseField name="401 — Invalid credentials">
+The key was not found or the secret does not match.
+
+```json
+{
+  "success": false,
+  "error": "Invalid API credentials"
+}
+```
+</ResponseField>
+
+<ResponseField name="403 — Key not active">
+The key exists but has been suspended or revoked.
+
+```json
+{
+  "success": false,
+  "error": "API key is not active"
+}
+```
+</ResponseField>
+
+<ResponseField name="403 — Key expired">
+The key has passed its `expiresAt` date.
+
+```json
+{
+  "success": false,
+  "error": "API key has expired"
+}
+```
+</ResponseField>
+
+<ResponseField name="403 — IP not allowed">
+Your server's IP address is not on the key's allowlist.
+
+```json
+{
+  "success": false,
+  "error": "IP address not allowed",
+  "yourIP": "203.0.113.42"
+}
+```
+</ResponseField>
+
+---
+
+## JWT authentication
+
+A JWT is returned from both `POST /api/v1/auth/login` and `POST /api/v1/auth/verify-email`. Pass it as a `Bearer` token:
+
+```bash
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+<CodeGroup>
+```bash curl
+curl https://api.hyparrow.com/api/v1/api-keys/create \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{"name": "production", "keyType": "live"}'
+```
+
+```javascript Node.js
+const response = await fetch('https://api.hyparrow.com/api/v1/api-keys/create', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ name: 'production', keyType: 'live' }),
+});
+```
+</CodeGroup>
+
+### JWT claims
+
+The JWT payload contains:
+
+| Claim | Type | Description |
+|-------|------|-------------|
+| `userId` | UUID | Your user ID |
+| `email` | string | Your email address |
+| `role` | string | Your account role |
+| `exp` | Unix timestamp | Expiry — 24 hours from issue |
+| `iat` | Unix timestamp | Issued at |
+
+### JWT expiry
+
+Tokens expire after **24 hours**. Re-authenticate via `POST /api/v1/auth/login` to get a fresh token.
+
+### Error responses for JWT auth
+
+<ResponseField name="401 — No token">
+
+```json
+{
+  "success": false,
+  "error": "No token provided"
+}
+```
+</ResponseField>
+
+<ResponseField name="401 — Invalid or expired token">
+
+```json
+{
+  "success": false,
+  "error": "Invalid or expired token"
+}
+```
+</ResponseField>
+
+<ResponseField name="403 — Email not verified">
+The account exists but the email address has not been confirmed.
+
+```json
+{
+  "success": false,
+  "error": "Email not verified"
+}
+```
+</ResponseField>
+
+---
+
+## Which method to use
+
+Use **API key auth** for:
+- Your backend server calling Hyparrow (bill payments, transfers, customer creation, transactions)
+- Any automated or scheduled process
+
+Use **JWT auth** for:
+- Creating and managing API keys (the key management endpoints only accept JWT)
+- Managing your user profile, onboarding, and wallet setup
+
+<Note>
+Some endpoints accept both methods. When you authenticate with an API key, the associated user account is resolved automatically, so you do not need to pass a separate user identifier.
+</Note>
+
+---
+
+## Security best practices
+
+- **Never expose your API secret in client-side code** (browsers, mobile apps). Always call Hyparrow from your server.
+- Store `HYPARROW_API_KEY` and `HYPARROW_API_SECRET` as environment variables, not hardcoded in source files.
+- Enable **IP whitelisting** on your API key so only your server's IP addresses can use it. See [API Keys](/concepts/api-keys) for setup.
+- Rotate your API key periodically by revoking the old one and creating a new one.
+- If you suspect a key has been compromised, revoke it immediately via `DELETE /api/v1/api-keys/:id`.

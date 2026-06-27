@@ -1,0 +1,416 @@
+---
+title: "KYC Verification"
+description: "Verify identities using BVN, NIN, CAC, drivers license, passport, phone, voters card, credit history, AML checks, and face comparison."
+---
+
+Hyparrow's KYC endpoints proxy identity verification requests to Zeeh and Interswitch Verify, plus a NUBAN account lookup service. Each call is billed against your KYC balance or active plan quota.
+
+## Billing model
+
+KYC calls are prepaid. You either subscribe to a monthly plan (which grants a quota of calls per endpoint type) or maintain a top-up balance that is debited per call.
+
+- If you have an active plan and the call falls within its quota, the call is free against your balance.
+- If your quota is exhausted or you have no active plan, the call is deducted from your balance.
+- Requests that exceed both quota and balance return `402 Payment Required`.
+
+## Manage billing
+
+### Check your balance
+
+`GET /api/v1/kyc/balance`
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/kyc/balance \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "balance": 4750.00
+  }
+}
+```
+
+### List available plans
+
+`GET /api/v1/kyc/plans`
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/kyc/plans \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+### Subscribe to a plan
+
+`POST /api/v1/kyc/subscribe`
+
+<ParamField body="planId" type="string" required>
+  UUID of the plan to subscribe to. Retrieve plan IDs from `GET /api/v1/kyc/plans`.
+</ParamField>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/subscribe \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --header "Content-Type: application/json" \
+  --data '{ "planId": "plan-uuid-..." }'
+```
+
+<Note>
+  Subscribing to a plan deducts the plan cost from your balance. Ensure sufficient balance before calling this endpoint.
+</Note>
+
+## Zeeh verification
+
+Zeeh endpoints perform identity checks against Nigerian civil registries.
+
+<AccordionGroup>
+  <Accordion title="BVN basic lookup">
+    `POST /api/v1/kyc/zee/bvn/basic`
+
+    Returns name, date of birth, and phone number associated with the BVN.
+
+    ```bash cURL
+    curl --request POST \
+      --url https://api.hyparrow.com/api/v1/kyc/zee/bvn/basic \
+      --header "x-api-key: your_api_key" \
+      --header "x-api-secret: your_api_secret" \
+      --header "Content-Type: application/json" \
+      --data '{ "bvn": "22200000001" }'
+    ```
+  </Accordion>
+
+  <Accordion title="BVN advanced lookup">
+    `POST /api/v1/kyc/zee/bvn/advanced`
+
+    Returns the full BVN profile including residential address and enrollment bank.
+
+    ```bash cURL
+    curl --request POST \
+      --url https://api.hyparrow.com/api/v1/kyc/zee/bvn/advanced \
+      --header "x-api-key: your_api_key" \
+      --header "x-api-secret: your_api_secret" \
+      --header "Content-Type: application/json" \
+      --data '{ "bvn": "22200000001" }'
+    ```
+  </Accordion>
+
+  <Accordion title="NIN lookup">
+    `POST /api/v1/kyc/zee/nin`
+
+    Looks up the National Identification Number.
+
+    ```bash cURL
+    curl --request POST \
+      --url https://api.hyparrow.com/api/v1/kyc/zee/nin \
+      --header "x-api-key: your_api_key" \
+      --header "x-api-secret: your_api_secret" \
+      --header "Content-Type: application/json" \
+      --data '{ "nin": "12345678901" }'
+    ```
+  </Accordion>
+
+  <Accordion title="NIN with face comparison">
+    `POST /api/v1/kyc/zee/nin/with-face`
+
+    Looks up the NIN and compares the registered photo against a supplied image URL.
+
+    ```json Request body
+    {
+      "nin": "12345678901",
+      "imageUrl": "https://example.com/photo.jpg"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Voters card">
+    `POST /api/v1/kyc/zee/voters-card`
+
+    Verifies a Voter Identification Number (VIN).
+
+    ```json Request body
+    {
+      "vin": "91A2B3C4D5E6F7G8H9"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Phone basic">
+    `POST /api/v1/kyc/zee/phone/basic`
+
+    Returns the name and network associated with a Nigerian phone number.
+
+    ```json Request body
+    {
+      "phoneNumber": "+2348012345678"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Phone advanced">
+    `POST /api/v1/kyc/zee/phone/advanced`
+
+    Extended phone lookup including SIM registration details.
+
+    ```json Request body
+    {
+      "phoneNumber": "+2348012345678"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="CAC basic">
+    `POST /api/v1/kyc/zee/cac/basic`
+
+    Basic Corporate Affairs Commission lookup by RC number.
+
+    ```json Request body
+    {
+      "rcNumber": "RC123456",
+      "companyName": "Acme Nigeria Ltd",
+      "companyType": "RC"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="CAC advanced">
+    `POST /api/v1/kyc/zee/cac/advanced`
+
+    Extended CAC lookup including directors and registered address.
+
+    ```json Request body
+    {
+      "rcNumber": "RC123456",
+      "companyName": "Acme Nigeria Ltd",
+      "companyType": "RC"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Interswitch Verify
+
+Interswitch Verify endpoints cover a broader set of identity documents and financial checks.
+
+<AccordionGroup>
+  <Accordion title="NIN boolean match">
+    `POST /api/v1/kyc/switch/nin`
+
+    Returns `EXACT_MATCH` or `NO_MATCH` for the supplied name against the NIN record.
+
+    ```json Request body
+    {
+      "nin": "12345678901",
+      "firstName": "Jane",
+      "lastName": "Doe"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="BVN full details">
+    `POST /api/v1/kyc/switch/bvn/full`
+
+    Returns the complete BVN profile.
+
+    ```json Request body
+    {
+      "bvn": "22200000001"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="BVN boolean match">
+    `POST /api/v1/kyc/switch/bvn/boolean-match`
+
+    Returns a name-match result for the BVN without exposing the full profile.
+
+    ```json Request body
+    {
+      "bvn": "22200000001",
+      "firstName": "Jane",
+      "lastName": "Doe"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="TIN verification">
+    `POST /api/v1/kyc/switch/tin`
+
+    Verifies a Tax Identification Number.
+
+    ```json Request body
+    {
+      "tin": "12345678-0001"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Driver's license">
+    `POST /api/v1/kyc/switch/drivers-license`
+
+    Verifies a Nigerian driver's license number.
+
+    ```json Request body
+    {
+      "licenseNumber": "AAA00000AA00"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="International passport">
+    `POST /api/v1/kyc/switch/passport`
+
+    Verifies a Nigerian international passport.
+
+    ```json Request body
+    {
+      "passportNumber": "A00000000",
+      "lastName": "Doe",
+      "dob": "1990-04-15"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="CAC lookup">
+    `POST /api/v1/kyc/switch/cac`
+
+    Searches the CAC database by company name.
+
+    ```json Request body
+    {
+      "companyName": "Acme Nigeria"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Credit history">
+    `POST /api/v1/kyc/switch/credit-history`
+
+    Retrieves credit bureau history for the supplied BVN.
+
+    ```json Request body
+    {
+      "bvn": "22200000001"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Domestic AML check">
+    `POST /api/v1/kyc/switch/aml/domestic`
+
+    Screens a full name against Nigerian sanctions and watchlists.
+
+    ```json Request body
+    {
+      "fullName": "Jane Doe"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Global AML check">
+    `POST /api/v1/kyc/switch/aml/global`
+
+    Screens a query against international sanctions databases.
+
+    ```json Request body
+    {
+      "type": "individual",
+      "query": "Jane Doe"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Face comparison">
+    `POST /api/v1/kyc/switch/face-comparison`
+
+    Compares two face images and returns a similarity score.
+
+    ```json Request body
+    {
+      "image1": "https://example.com/face1.jpg",
+      "image2": "https://example.com/face2.jpg"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## NUBAN account lookup
+
+Resolve a bank account number to an account name. Useful for validating recipient accounts before transfers.
+
+<AccordionGroup>
+  <Accordion title="Lookup by account number">
+    `POST /api/v1/kyc/nuban/lookup`
+
+    Attempts to identify the bank and resolve the account name without specifying a bank.
+
+    ```bash cURL
+    curl --request POST \
+      --url https://api.hyparrow.com/api/v1/kyc/nuban/lookup \
+      --header "x-api-key: your_api_key" \
+      --header "x-api-secret: your_api_secret" \
+      --header "Content-Type: application/json" \
+      --data '{ "accountNumber": "0123456789" }'
+    ```
+  </Accordion>
+
+  <Accordion title="Lookup with bank code">
+    `POST /api/v1/kyc/nuban/lookup-with-bank`
+
+    Resolves the account name at a specific bank.
+
+    ```json Request body
+    {
+      "accountNumber": "0123456789",
+      "bankCode": "035"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Guess banks">
+    `POST /api/v1/kyc/nuban/guess-banks`
+
+    Returns a list of banks that are likely to hold the given account number, based on NUBAN routing rules.
+
+    ```json Request body
+    {
+      "accountNumber": "0123456789"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Standard response shape
+
+All KYC endpoints return the same envelope:
+
+```json
+{
+  "success": true,
+  "data": {
+    "..."
+  }
+}
+```
+
+On verification failure (e.g. no matching record), the provider response is forwarded inside `data`. On billing failure, the API returns `402` with an `error` string.
+
+## Call history
+
+`GET /api/v1/kyc/call-history`
+
+Returns a paginated log of every verification call made by your account, including provider, endpoint, status, and the amount billed.
+
+```bash cURL
+curl --request GET \
+  --url "https://api.hyparrow.com/api/v1/kyc/call-history?page=1&limit=20" \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```

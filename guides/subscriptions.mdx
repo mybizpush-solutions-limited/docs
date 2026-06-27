@@ -1,0 +1,263 @@
+---
+title: "Subscriptions"
+description: "Set up recurring billing cycles and collect subscription payments via virtual account, card, or manual confirmation."
+---
+
+Subscriptions tie a customer to a product and automatically track billing periods. Each renewal can be collected via virtual account bank transfer, card, or a manual confirmation. Hyparrow records every payment in a full payment history you can query at any time.
+
+<Info>
+  Subscriptions are linked to a **product** (which carries the price and currency) and a **customer** record. Create both before creating a subscription.
+</Info>
+
+## Create a subscription
+
+`POST /api/v1/subscriptions/`
+
+<ParamField body="customerId" type="string" required>
+  UUID of the customer to subscribe.
+</ParamField>
+<ParamField body="productId" type="string" required>
+  UUID of the product. The subscription amount and currency are taken from the product.
+</ParamField>
+<ParamField body="interval" type="string" required>
+  Billing frequency. One of: `daily`, `every_3_days`, `weekly`, `biweekly`, `monthly`, `quarterly`, `biannual`, `yearly`.
+</ParamField>
+<ParamField body="paymentMethod" type="string" required>
+  How each renewal is collected. One of: `card`, `manual`, `va`.
+</ParamField>
+<ParamField body="graceDays" type="number" default="3">
+  Number of days after a missed payment before the subscription is auto-canceled.
+</ParamField>
+<ParamField body="metadata" type="object">
+  Arbitrary key-value pairs stored on the subscription.
+</ParamField>
+<ParamField body="checkoutCallbackUrl" type="string">
+  URL that Hyparrow POSTs to when a checkout-link payment for this subscription changes status (`completed`, `pending`, or `failed`).
+</ParamField>
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/subscriptions/ \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "customerId": "cust-uuid-...",
+    "productId": "prod-uuid-...",
+    "interval": "monthly",
+    "paymentMethod": "va",
+    "graceDays": 5,
+    "checkoutCallbackUrl": "https://yourapp.com/webhooks/subscription"
+  }'
+```
+
+```javascript Node.js
+const response = await fetch("https://api.hyparrow.com/api/v1/subscriptions/", {
+  method: "POST",
+  headers: {
+    "x-api-key": "your_api_key",
+    "x-api-secret": "your_api_secret",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    customerId: "cust-uuid-...",
+    productId: "prod-uuid-...",
+    interval: "monthly",
+    paymentMethod: "va",
+    graceDays: 5,
+  }),
+});
+const { data } = await response.json();
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "success": true,
+  "message": "Subscription created",
+  "data": {
+    "id": "sub-uuid-...",
+    "status": "pending_payment",
+    "interval": "monthly",
+    "amount": 5000.00,
+    "currency": "NGN",
+    "paymentMethod": "va",
+    "graceDays": 5,
+    "nextBillingAt": null,
+    "createdAt": "2025-06-01T10:00:00Z"
+  }
+}
+```
+
+A new subscription starts with `status: pending_payment`. It becomes `active` once the first payment is recorded.
+
+## Subscription statuses
+
+| Status | Meaning |
+|--------|---------|
+| `pending_payment` | Created, waiting for first payment |
+| `active` | Billing is running normally |
+| `canceled` | Manually canceled |
+| `expired` | Grace period elapsed without payment |
+
+## Generate a virtual account
+
+For subscriptions with `paymentMethod: va`, generate a short-lived virtual account for the current billing period.
+
+`POST /api/v1/subscriptions/:subscriptionId/generate-va`
+
+<ParamField body="expiryMinutes" type="number" required>
+  VA lifetime in minutes. Must be exactly `10`, `15`, or `30`.
+</ParamField>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-.../generate-va \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --header "Content-Type: application/json" \
+  --data '{ "expiryMinutes": 15 }'
+```
+
+```json Response
+{
+  "success": true,
+  "message": "Virtual account generated — pay the exact amount before it expires",
+  "data": {
+    "accountNumber": "0123456789",
+    "accountName": "Hyparrow / Jane Doe",
+    "bankName": "Wema Bank",
+    "bankCode": "035",
+    "expiresAt": "2025-06-01T10:15:00Z"
+  }
+}
+```
+
+<Warning>
+  The customer must pay the exact subscription amount before the VA expires.
+</Warning>
+
+## Mark as paid (manual)
+
+For subscriptions with `paymentMethod: manual`, record a payment confirmation after collecting it through your own system.
+
+`POST /api/v1/subscriptions/:subscriptionId/pay`
+
+<ParamField body="reference" type="string">
+  Your own payment reference.
+</ParamField>
+<ParamField body="payerName" type="string">
+  Name of the payer as known by your system.
+</ParamField>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-.../pay \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "reference": "TXN-20250601-001",
+    "payerName": "Jane Doe"
+  }'
+```
+
+## Cancel a subscription
+
+`POST /api/v1/subscriptions/:subscriptionId/cancel`
+
+Cancels the subscription immediately. No further payments are collected. The `canceledAt` timestamp is set on the record.
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-.../cancel \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+```json Response
+{
+  "success": true,
+  "message": "Subscription canceled",
+  "data": {
+    "id": "sub-uuid-...",
+    "status": "canceled",
+    "canceledAt": "2025-06-01T11:00:00Z"
+  }
+}
+```
+
+## Get subscription status
+
+`GET /api/v1/subscriptions/:subscriptionId`
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-... \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+The response includes the full subscription object with `currentPeriodStart`, `currentPeriodEnd`, `nextBillingAt`, and nested `customer` and `product` objects.
+
+## Payment history
+
+`GET /api/v1/subscriptions/:subscriptionId/payments`
+
+Returns a paginated list of `SubscriptionPayment` records, each covering a single billing cycle.
+
+```bash cURL
+curl --request GET \
+  --url "https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-.../payments?page=1&limit=20" \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+```json Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": "pay-uuid-...",
+      "subscriptionId": "sub-uuid-...",
+      "amount": 5000.00,
+      "currency": "NGN",
+      "paidAt": "2025-06-01T10:05:00Z",
+      "reference": "TXN-20250601-001",
+      "payerName": "Jane Doe",
+      "periodStart": "2025-06-01T00:00:00Z",
+      "periodEnd": "2025-07-01T00:00:00Z",
+      "paymentSource": "va"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+## List subscriptions
+
+`GET /api/v1/subscriptions/`
+
+| Query parameter | Type | Default | Description |
+|-----------------|------|---------|-------------|
+| `page` | number | `1` | Page number |
+| `limit` | number | `20` | Results per page |
+| `status` | string | — | Filter by subscription status |
+
+## Public checkout
+
+Share a hosted checkout page with the subscriber. No authentication is needed on their side.
+
+```
+GET https://api.hyparrow.com/api/v1/checkout/subscription/:subscriptionId
+```
+
+Hyparrow renders the payment options and, on completion, POSTs a status update to the `checkoutCallbackUrl` configured on the subscription.

@@ -1,0 +1,221 @@
+---
+title: "Bank Transfers"
+description: "Send money to any Nigerian bank account using the Hyparrow transfers API."
+---
+
+## Overview
+
+The transfers API lets you send funds from your Hyparrow wallet to any Nigerian bank account. Before initiating a transfer you should always validate the recipient account to confirm the account name — this prevents irreversible misdirected payments.
+
+<Warning>
+Always validate the recipient account before sending a transfer. Bank transfers are **irreversible** once processed.
+</Warning>
+
+---
+
+## Step-by-step guide
+
+<Steps>
+
+<Step title="List supported banks">
+
+Fetch all banks and their codes. You'll need a bank's `bankCode` for account inquiry and for initiating transfers.
+
+```bash
+GET https://api.hyparrow.com/api/v1/transfers/banks
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": [
+    { "bankCode": "057", "bankName": "Zenith Bank" },
+    { "bankCode": "011", "bankName": "First Bank" },
+    { "bankCode": "058", "bankName": "GTBank" }
+  ]
+}
+```
+
+</Step>
+
+<Step title="Validate the recipient account">
+
+Confirm the account number resolves to the expected account name before sending funds. This endpoint accepts both GET (query params) and POST (JSON body).
+
+<CodeGroup>
+
+```bash GET
+GET https://api.hyparrow.com/api/v1/transfers/account-inquiry?accountNumber=0123456789&bankCode=057
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+```bash POST
+POST https://api.hyparrow.com/api/v1/transfers/account-inquiry
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+
+{
+  "accountNumber": "0123456789",
+  "bankCode": "057"
+}
+```
+
+</CodeGroup>
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "AccountNumber": "0123456789",
+    "AccountName": "JANE DOE"
+  }
+}
+```
+
+Present the resolved `AccountName` to your user and ask them to confirm before proceeding.
+
+</Step>
+
+<Step title="Initiate the transfer">
+
+Send the transfer. The amount is deducted from your wallet immediately.
+
+```bash
+POST https://api.hyparrow.com/api/v1/transfers/initiate
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+Content-Type: application/json
+```
+
+```json
+{
+  "amount": "500000",
+  "recipientAccount": "0123456789",
+  "recipientBankCode": "057",
+  "recipientName": "Jane Doe",
+  "senderPhone": "08012345678",
+  "senderEmail": "sender@example.com",
+  "senderLastname": "Smith",
+  "senderOthernames": "John",
+  "narration": "Payment for services"
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "message": "Transfer initiated successfully and wallet debited",
+  "data": {
+    "TransferCode": "145317076841230456",
+    "TransactionID": "b3f2c1d4-...",
+    "WalletBalance": 4500000
+  }
+}
+```
+
+<Note>
+The `amount` field is in **kobo** as a string. ₦5,000 = `"500000"`. Save the returned `TransferCode` — you'll use it to check status.
+</Note>
+
+</Step>
+
+<Step title="Check transfer status">
+
+Poll for the final status of a transfer using the `TransferCode` returned at initiation.
+
+```bash
+GET https://api.hyparrow.com/api/v1/transfers/status?reference=145317076841230456
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "TransferCode": "145317076841230456",
+    "ResponseCode": "00",
+    "ResponseDescription": "Approved"
+  }
+}
+```
+
+</Step>
+
+</Steps>
+
+---
+
+## Endpoints reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/transfers/banks` | List supported banks and their codes |
+| `GET` | `/api/v1/transfers/account-inquiry` | Validate an account (query params) |
+| `POST` | `/api/v1/transfers/account-inquiry` | Validate an account (JSON body) |
+| `POST` | `/api/v1/transfers/initiate` | Send a bank transfer |
+| `GET` | `/api/v1/transfers/status?reference=` | Check transfer status |
+
+---
+
+## Transfer request body
+
+<ParamField body="amount" type="string" required>
+  Amount to transfer in **kobo** as a string (e.g. `"500000"` for ₦5,000). Must not exceed your wallet balance.
+</ParamField>
+
+<ParamField body="recipientAccount" type="string" required>
+  The recipient's 10-digit NUBAN account number.
+</ParamField>
+
+<ParamField body="recipientBankCode" type="string" required>
+  The 3-digit bank code for the recipient's bank. Retrieve this from `GET /api/v1/transfers/banks`.
+</ParamField>
+
+<ParamField body="recipientName" type="string" required>
+  Full name of the recipient (e.g. `"Jane Doe"`). The API splits this into firstname and lastname automatically.
+</ParamField>
+
+<ParamField body="senderPhone" type="string" required>
+  Phone number of the sender.
+</ParamField>
+
+<ParamField body="senderEmail" type="string" required>
+  Email address of the sender.
+</ParamField>
+
+<ParamField body="senderLastname" type="string" required>
+  Last name of the sender.
+</ParamField>
+
+<ParamField body="senderOthernames" type="string" required>
+  First and middle names of the sender.
+</ParamField>
+
+<ParamField body="narration" type="string">
+  Optional description that appears on the recipient's bank statement.
+</ParamField>
+
+---
+
+## Account inquiry parameters
+
+<ParamField query="accountNumber" type="string" required>
+  The 10-digit NUBAN account number to validate.
+</ParamField>
+
+<ParamField query="bankCode" type="string" required>
+  The 3-digit bank code for the account's bank.
+</ParamField>

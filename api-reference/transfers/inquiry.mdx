@@ -1,0 +1,107 @@
+---
+title: "Account Inquiry"
+description: "Look up the account name for a bank account number before initiating a transfer."
+---
+
+Resolve a bank account number to its registered account name before sending funds. Always perform an inquiry first to confirm you have the correct recipient details.
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+## Endpoint
+
+This endpoint accepts both `GET` (query parameters) and `POST` (JSON body) requests.
+
+```
+GET  https://api.hyparrow.com/api/v1/transfers/account-inquiry?accountNumber={}&bankCode={}
+POST https://api.hyparrow.com/api/v1/transfers/account-inquiry
+```
+
+## Parameters
+
+<ParamField query="accountNumber" type="string" required>
+  The recipient's bank account number (typically 10 digits for Nigerian accounts).
+</ParamField>
+
+<ParamField query="bankCode" type="string" required>
+  The recipient bank's code. Obtain this from the [List Banks](/api-reference/transfers/banks) endpoint.
+</ParamField>
+
+<Note>
+  When using `POST`, send these same fields as a JSON body instead of query parameters.
+</Note>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the account is found and the name is resolved.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Account details returned by the bank.
+  <Expandable title="data fields">
+    <ResponseField name="accountName" type="string">
+      The full registered name on the bank account.
+    </ResponseField>
+    <ResponseField name="accountNumber" type="string">
+      The account number that was queried.
+    </ResponseField>
+    <ResponseField name="bankCode" type="string">
+      The bank code that was queried.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl (GET)
+curl -X GET "https://api.hyparrow.com/api/v1/transfers/account-inquiry?accountNumber=0123456789&bankCode=058" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+```bash curl (POST)
+curl -X POST https://api.hyparrow.com/api/v1/transfers/account-inquiry \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret" \
+  -d '{
+    "accountNumber": "0123456789",
+    "bankCode": "058"
+  }'
+```
+
+</CodeGroup>
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": {
+    "accountName": "ADA CHIOMA OKAFOR",
+    "accountNumber": "0123456789",
+    "bankCode": "058"
+  }
+}
+```
+
+### Error response
+
+```json
+{
+  "success": false,
+  "error": "Account inquiry failed: account number not found",
+  "data": null
+}
+```
+
+<Warning>
+  Always use the resolved `accountName` to confirm the correct recipient with your user before calling [Send Transfer](/api-reference/transfers/initiate).
+</Warning>

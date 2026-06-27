@@ -1,0 +1,212 @@
+---
+title: "Bank Account Lookup"
+description: "Look up the owner of a Nigerian bank account number (NUBAN), resolve the account with a specific bank, or determine which banks an account number belongs to."
+---
+
+NUBAN (Nigerian Uniform Bank Account Number) lookup endpoints let you resolve bank account ownership before initiating transfers or collecting payments. Each call consumes your KYC balance or quota.
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+---
+
+## Lookup bank account
+
+Resolve the owner of an account number without specifying a bank. The service checks across multiple banks and returns the account name when found.
+
+```
+POST /api/v1/kyc/nuban/lookup
+```
+
+### Request body
+
+<ParamField body="accountNumber" type="string" required>
+  The 10-digit NUBAN account number to look up.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/nuban/lookup \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "accountNumber": "0123456789" }'
+```
+
+```json Request body
+{ "accountNumber": "0123456789" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "accountNumber": "0123456789",
+    "accountName": "JANE DOE",
+    "bankName": "GTBank",
+    "bankCode": "000013"
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="data.accountNumber" type="string">
+  The account number that was queried.
+</ResponseField>
+<ResponseField name="data.accountName" type="string">
+  The full name of the account holder as registered with the bank.
+</ResponseField>
+<ResponseField name="data.bankName" type="string">
+  The name of the bank where the account is held.
+</ResponseField>
+<ResponseField name="data.bankCode" type="string">
+  The CBN bank code for the resolved bank.
+</ResponseField>
+
+---
+
+## Lookup with specific bank
+
+Resolve the owner of an account number at a specific bank using the bank's CBN code. Use this when you already know which bank the account belongs to — it returns faster and more accurate results.
+
+```
+POST /api/v1/kyc/nuban/lookup-with-bank
+```
+
+### Request body
+
+<ParamField body="accountNumber" type="string" required>
+  The 10-digit NUBAN account number.
+</ParamField>
+
+<ParamField body="bankCode" type="string" required>
+  The CBN bank code of the bank to look up the account at. For example, `"000013"` for GTBank or `"000014"` for Access Bank.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/nuban/lookup-with-bank \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "accountNumber": "0123456789",
+    "bankCode": "000013"
+  }'
+```
+
+```json Request body
+{
+  "accountNumber": "0123456789",
+  "bankCode": "000013"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "accountNumber": "0123456789",
+    "accountName": "JANE DOE",
+    "bankName": "GTBank",
+    "bankCode": "000013"
+  }
+}
+```
+
+---
+
+## Guess banks
+
+Identify which Nigerian banks a given account number is likely to belong to, based on the NUBAN algorithm. Returns a list of probable banks without performing a live account name enquiry.
+
+```
+POST /api/v1/kyc/nuban/guess-banks
+```
+
+### Request body
+
+<ParamField body="accountNumber" type="string" required>
+  The 10-digit NUBAN account number to analyse.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/nuban/guess-banks \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "accountNumber": "0123456789" }'
+```
+
+```json Request body
+{ "accountNumber": "0123456789" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "accountNumber": "0123456789",
+    "possibleBanks": [
+      {
+        "bankName": "GTBank",
+        "bankCode": "000013",
+        "confidence": "high"
+      },
+      {
+        "bankName": "First Bank",
+        "bankCode": "000016",
+        "confidence": "medium"
+      }
+    ]
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="data.possibleBanks" type="array">
+  Array of banks that the account number might belong to.
+
+  <Expandable title="Bank entry fields">
+    <ResponseField name="bankName" type="string">
+      Bank name.
+    </ResponseField>
+    <ResponseField name="bankCode" type="string">
+      CBN bank code.
+    </ResponseField>
+    <ResponseField name="confidence" type="string">
+      Estimated confidence level: `high`, `medium`, or `low`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>

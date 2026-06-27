@@ -1,0 +1,154 @@
+---
+title: "Send Transfer"
+description: "Initiate a bank transfer from your Hyparrow wallet to any supported Nigerian bank account."
+---
+
+Sends funds from your Hyparrow wallet to a recipient's bank account. The amount is deducted from your wallet balance and forwarded to the recipient's bank. A unique transfer code is generated and returned for status tracking.
+
+<Info>
+  You must have a registered API key and a funded wallet before initiating transfers. Use the [Account Inquiry](/api-reference/transfers/inquiry) endpoint to verify the recipient's account name before sending.
+</Info>
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+## Endpoint
+
+```
+POST https://api.hyparrow.com/api/v1/transfers/initiate
+```
+
+## Request body
+
+<ParamField body="amount" type="string" required>
+  The transfer amount in kobo. ₦1,000 = `"100000"`.
+</ParamField>
+
+<ParamField body="recipientAccount" type="string" required>
+  The recipient's bank account number.
+</ParamField>
+
+<ParamField body="recipientBankCode" type="string" required>
+  The recipient's bank code. Obtain this from the [List Banks](/api-reference/transfers/banks) endpoint.
+</ParamField>
+
+<ParamField body="recipientName" type="string" required>
+  The recipient's full name. Use the name returned by the [Account Inquiry](/api-reference/transfers/inquiry) endpoint to ensure accuracy. Accepts formats such as `Firstname Lastname` or `Firstname Middlename Lastname`.
+</ParamField>
+
+<ParamField body="senderPhone" type="string" required>
+  The sender's phone number (e.g., `08012345678`).
+</ParamField>
+
+<ParamField body="senderEmail" type="string" required>
+  The sender's email address.
+</ParamField>
+
+<ParamField body="senderLastname" type="string" required>
+  The sender's last name.
+</ParamField>
+
+<ParamField body="senderOthernames" type="string" required>
+  The sender's first name and any middle names.
+</ParamField>
+
+<ParamField body="narration" type="string">
+  An optional description for the transfer (e.g., `Invoice payment #1042`). Appears on the recipient's bank statement where supported.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the transfer is accepted and wallet deducted.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Confirmation that the transfer was initiated and wallet debited.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Transfer result and tracking details.
+  <Expandable title="data fields">
+    <ResponseField name="TransferCode" type="string">
+      A unique system-generated transfer code. Use this as the `reference` when calling [Transfer Status](/api-reference/transfers/status).
+    </ResponseField>
+    <ResponseField name="TransactionID" type="string">
+      The internal wallet transaction UUID for this transfer.
+    </ResponseField>
+    <ResponseField name="WalletBalance" type="integer">
+      Your wallet balance in kobo after this transfer was deducted.
+    </ResponseField>
+    <ResponseField name="responseCode" type="string">
+      Provider response code. `"00"` indicates the transfer was accepted.
+    </ResponseField>
+    <ResponseField name="responseDescription" type="string">
+      Human-readable description of the transfer result.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/transfers/initiate \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret" \
+  -d '{
+    "amount": "100000",
+    "recipientAccount": "0123456789",
+    "recipientBankCode": "058",
+    "recipientName": "Ada Chioma Okafor",
+    "senderPhone": "08098765432",
+    "senderEmail": "emeka.eze@example.com",
+    "senderLastname": "Eze",
+    "senderOthernames": "Emeka",
+    "narration": "Invoice payment #1042"
+  }'
+```
+
+</CodeGroup>
+
+### Success response
+
+```json
+{
+  "success": true,
+  "message": "Transfer initiated successfully and wallet debited",
+  "data": {
+    "TransferCode": "14531707684123456",
+    "TransactionID": "f3a1b2c4-d5e6-7890-abcd-ef0987654321",
+    "WalletBalance": 400000,
+    "responseCode": "00",
+    "responseDescription": "Approved"
+  }
+}
+```
+
+### Error response (insufficient balance)
+
+```json
+{
+  "success": false,
+  "error": "Insufficient wallet balance. Available: ₦500.00, Required: ₦1000.00"
+}
+```
+
+### Error response (no API client)
+
+```json
+{
+  "success": false,
+  "error": "No API client found. Please create an API key first."
+}
+```
+
+<Warning>
+  The transfer amount is deducted from your wallet and forwarded to the banking provider in a single step. If the wallet deduction succeeds but the transfer fails at the provider level, the transaction is flagged for reconciliation. Contact support with your `TransferCode` if you encounter this situation.
+</Warning>

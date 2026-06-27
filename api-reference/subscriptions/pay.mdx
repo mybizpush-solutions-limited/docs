@@ -1,0 +1,332 @@
+---
+title: "Collect Payment"
+description: "Generate virtual accounts, record payments, cancel subscriptions, and retrieve payment history for a subscription."
+---
+
+## Generate virtual account
+
+Create a temporary virtual account for the current billing cycle. The customer transfers the exact subscription amount to this account number within the expiry window.
+
+```
+POST /api/v1/subscriptions/:subscriptionId/generate-va
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Path parameters
+
+<ParamField path="subscriptionId" type="string" required>
+  UUID of the subscription to generate a virtual account for.
+</ParamField>
+
+### Request body
+
+<ParamField body="expiryMinutes" type="integer" required>
+  How long the virtual account stays active. Must be one of `10`, `15`, or `30`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-abcd1234/generate-va \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "expiryMinutes": 30
+  }'
+```
+
+```json Request body
+{
+  "expiryMinutes": 30
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Virtual account generated — pay the exact amount before it expires",
+  "data": {
+    "id": "sva-uuid-1234",
+    "subscriptionId": "sub-uuid-abcd1234",
+    "accountNumber": "0123456789",
+    "accountName": "Acme Corp / Jane Doe",
+    "bankCode": "000013",
+    "bankName": "GTBank",
+    "expiresAt": "2024-05-01T00:30:00Z",
+    "isActive": true,
+    "createdAt": "2024-05-01T00:00:00Z"
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="data.accountNumber" type="string">
+  Virtual account number the customer should transfer to.
+</ResponseField>
+<ResponseField name="data.accountName" type="string">
+  Account name associated with the virtual account.
+</ResponseField>
+<ResponseField name="data.bankName" type="string">
+  Bank name for the virtual account.
+</ResponseField>
+<ResponseField name="data.expiresAt" type="string">
+  ISO 8601 timestamp after which the account becomes inactive.
+</ResponseField>
+<ResponseField name="data.isActive" type="boolean">
+  `true` while the account can receive payments.
+</ResponseField>
+
+---
+
+## Get virtual account
+
+Retrieve the active virtual account for the current billing cycle.
+
+```
+GET /api/v1/subscriptions/:subscriptionId/va
+```
+
+### Path parameters
+
+<ParamField path="subscriptionId" type="string" required>
+  UUID of the subscription.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-abcd1234/va \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "id": "sva-uuid-1234",
+    "subscriptionId": "sub-uuid-abcd1234",
+    "accountNumber": "0123456789",
+    "accountName": "Acme Corp / Jane Doe",
+    "bankCode": "000013",
+    "bankName": "GTBank",
+    "expiresAt": "2024-05-01T00:30:00Z",
+    "isActive": true
+  }
+}
+```
+
+---
+
+## Cancel subscription
+
+Cancel a subscription immediately. The subscription status changes to `canceled` and no further billing cycles are created.
+
+```
+POST /api/v1/subscriptions/:subscriptionId/cancel
+```
+
+### Path parameters
+
+<ParamField path="subscriptionId" type="string" required>
+  UUID of the subscription to cancel.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-abcd1234/cancel \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "message": "Subscription canceled",
+  "data": {
+    "id": "sub-uuid-abcd1234",
+    "status": "canceled",
+    "canceledAt": "2024-04-23T15:00:00Z",
+    "updatedAt": "2024-04-23T15:00:00Z"
+  }
+}
+```
+
+---
+
+## Mark as paid
+
+Manually record a payment for the current billing cycle. Use this for the `manual` payment method or when you have collected payment through an external channel.
+
+```
+POST /api/v1/subscriptions/:subscriptionId/pay
+```
+
+### Path parameters
+
+<ParamField path="subscriptionId" type="string" required>
+  UUID of the subscription.
+</ParamField>
+
+### Request body
+
+<ParamField body="reference" type="string">
+  Your own payment reference (e.g. from an external payment system or bank transfer confirmation). Optional.
+</ParamField>
+
+<ParamField body="payerName" type="string">
+  The name of the payer as known to you. Optional.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-abcd1234/pay \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "reference": "BANK-TXN-0042",
+    "payerName": "Jane Doe"
+  }'
+```
+
+```json Request body
+{
+  "reference": "BANK-TXN-0042",
+  "payerName": "Jane Doe"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "message": "Subscription marked as paid",
+  "data": {
+    "id": "spay-uuid-5678",
+    "subscriptionId": "sub-uuid-abcd1234",
+    "amount": 10000,
+    "currency": "NGN",
+    "paidAt": "2024-05-01T08:00:00Z",
+    "reference": "BANK-TXN-0042",
+    "payerName": "Jane Doe",
+    "periodStart": "2024-05-01T00:00:00Z",
+    "periodEnd": "2024-05-31T23:59:59Z",
+    "paymentSource": "manual"
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="data.id" type="string">
+  Unique payment record UUID.
+</ResponseField>
+<ResponseField name="data.amount" type="number">
+  Amount paid for this billing cycle.
+</ResponseField>
+<ResponseField name="data.paidAt" type="string">
+  ISO 8601 timestamp of payment.
+</ResponseField>
+<ResponseField name="data.periodStart" type="string">
+  Start of the billing period this payment covers.
+</ResponseField>
+<ResponseField name="data.periodEnd" type="string">
+  End of the billing period this payment covers.
+</ResponseField>
+<ResponseField name="data.paymentSource" type="string">
+  Payment collection method: `card`, `manual`, or `va`.
+</ResponseField>
+
+---
+
+## Get payment history
+
+Retrieve a paginated list of all payments recorded for a subscription.
+
+```
+GET /api/v1/subscriptions/:subscriptionId/payments
+```
+
+### Path parameters
+
+<ParamField path="subscriptionId" type="string" required>
+  UUID of the subscription.
+</ParamField>
+
+### Query parameters
+
+<ParamField query="page" type="integer">
+  Page number. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Results per page. Defaults to `20`.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.hyparrow.com/api/v1/subscriptions/sub-uuid-abcd1234/payments?page=1&limit=20' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": [
+    {
+      "id": "spay-uuid-5678",
+      "subscriptionId": "sub-uuid-abcd1234",
+      "amount": 10000,
+      "currency": "NGN",
+      "paidAt": "2024-05-01T08:00:00Z",
+      "reference": "BANK-TXN-0042",
+      "payerName": "Jane Doe",
+      "periodStart": "2024-05-01T00:00:00Z",
+      "periodEnd": "2024-05-31T23:59:59Z",
+      "paymentSource": "manual",
+      "createdAt": "2024-05-01T08:00:05Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```

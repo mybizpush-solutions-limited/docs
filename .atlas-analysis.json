@@ -1,0 +1,187 @@
+{
+  "projectType": "api-service",
+  "projectName": "Hyparrow",
+  "projectDescription": "Hyparrow is a white-label payment gateway API that enables businesses to accept payments, send bank transfers, pay bills, and verify customer identities via a single unified REST API.",
+  "theme": "luma",
+  "primaryColor": "#040404",
+  "lightColor": "#045cfb",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/api-keys",
+              "concepts/webhooks",
+              "concepts/transactions"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "guides/bill-payments",
+              "guides/bank-transfers",
+              "guides/card-payments",
+              "guides/virtual-accounts",
+              "guides/ussd-payments",
+              "guides/opay-payments"
+            ]
+          },
+          {
+            "group": "Platform Features",
+            "pages": [
+              "guides/invoices",
+              "guides/subscriptions",
+              "guides/customers",
+              "guides/kyc-verification",
+              "guides/crypto-wallets"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/errors",
+              "reference/idempotency",
+              "reference/rate-limits"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Auth",
+            "pages": [
+              "api-reference/auth/signup",
+              "api-reference/auth/login",
+              "api-reference/auth/verify-email"
+            ]
+          },
+          {
+            "group": "Bill Payments",
+            "pages": [
+              "api-reference/bills/categories",
+              "api-reference/bills/services",
+              "api-reference/bills/validate",
+              "api-reference/bills/pay",
+              "api-reference/bills/status"
+            ]
+          },
+          {
+            "group": "Bank Transfers",
+            "pages": [
+              "api-reference/transfers/banks",
+              "api-reference/transfers/inquiry",
+              "api-reference/transfers/initiate",
+              "api-reference/transfers/status"
+            ]
+          },
+          {
+            "group": "Card Payments",
+            "pages": [
+              "api-reference/card-payments/purchase",
+              "api-reference/card-payments/authenticate-otp",
+              "api-reference/card-payments/status"
+            ]
+          },
+          {
+            "group": "Invoices & Subscriptions",
+            "pages": [
+              "api-reference/invoices/create",
+              "api-reference/invoices/pay",
+              "api-reference/subscriptions/create",
+              "api-reference/subscriptions/pay"
+            ]
+          },
+          {
+            "group": "KYC & Identity",
+            "pages": [
+              "api-reference/kyc/bvn",
+              "api-reference/kyc/nin",
+              "api-reference/kyc/cac",
+              "api-reference/kyc/nuban"
+            ]
+          },
+          {
+            "group": "Customers & Transactions",
+            "pages": [
+              "api-reference/customers/create",
+              "api-reference/customers/virtual-account",
+              "api-reference/transactions/list",
+              "api-reference/transactions/get"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Bill payments — airtime, data, electricity, cable TV, and more",
+    "Bank transfers with real-time account validation",
+    "Virtual bank accounts for collections",
+    "Card payments with OTP and 3DS authentication (Visa, Mastercard, Verve)",
+    "USSD payment generation",
+    "OPay payment collection",
+    "Invoice creation and payment with PDF download",
+    "Recurring subscriptions with virtual account support",
+    "Customer management with dedicated virtual accounts",
+    "KYC identity verification — BVN, NIN, CAC, drivers license, passport",
+    "Crypto wallet creation and transfers",
+    "Webhook notifications for async payment events",
+    "API key authentication with rate limiting and IP whitelisting"
+  ],
+  "publicApiSurface": [
+    "POST /api/v1/auth/signup",
+    "POST /api/v1/auth/login",
+    "POST /api/v1/auth/verify-email",
+    "POST /api/v1/api-keys/create",
+    "GET  /api/v1/api-keys",
+    "DELETE /api/v1/api-keys/:id",
+    "GET  /api/v1/bills/categories",
+    "GET  /api/v1/bills/services",
+    "GET  /api/v1/bills/services/options",
+    "GET  /api/v1/bills/validate",
+    "POST /api/v1/bills/pay",
+    "GET  /api/v1/bills/status",
+    "GET  /api/v1/transfers/banks",
+    "GET  /api/v1/transfers/account-inquiry",
+    "POST /api/v1/transfers/initiate",
+    "GET  /api/v1/transfers/status",
+    "POST /api/v1/card-payments/purchase",
+    "POST /api/v1/card-payments/authenticate-otp",
+    "GET  /api/v1/card-payments/status",
+    "POST /api/v1/customers",
+    "POST /api/v1/customers/virtual-account",
+    "GET  /api/v1/customers",
+    "POST /api/v1/invoices/",
+    "GET  /api/v1/invoices/:invoiceId",
+    "POST /api/v1/invoices/:invoiceId/pay",
+    "POST /api/v1/subscriptions/",
+    "GET  /api/v1/subscriptions/:subscriptionId",
+    "POST /api/v1/subscriptions/:subscriptionId/generate-va",
+    "POST /api/v1/kyc/zee/bvn/basic",
+    "POST /api/v1/kyc/zee/nin",
+    "POST /api/v1/kyc/switch/bvn/full",
+    "POST /api/v1/kyc/nuban/lookup",
+    "POST /api/v1/payments/opay/initialize",
+    "POST /api/v1/payments/ussd/generate",
+    "GET  /api/v1/transactions/",
+    "GET  /api/v1/transactions/:transactionId",
+    "POST /api/v1/crypto/wallets",
+    "POST /api/v1/crypto/transfer",
+    "GET  /api/v1/webhooks/settings",
+    "PUT  /api/v1/webhooks/settings"
+  ]
+}

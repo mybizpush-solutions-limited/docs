@@ -1,0 +1,494 @@
+---
+title: "Create Invoice"
+description: "Create an invoice with line items, optional taxes, discounts, and shipping, then list or retrieve invoices."
+---
+
+## Create invoice
+
+Create a new invoice for a customer. You must supply at least one line item. Line items can reference existing products by ID (which auto-populates description and price) or be freeform entries with a description and unit price.
+
+```
+POST /api/v1/invoices/
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Request body
+
+**Invoice details**
+
+<ParamField body="title" type="string" required>
+  A descriptive title for the invoice, e.g. `"Web Development Services — March 2024"`.
+</ParamField>
+
+<ParamField body="currency" type="string">
+  ISO 4217 3-letter currency code. Defaults to `"USD"` if not provided. Example: `"NGN"`.
+</ParamField>
+
+<ParamField body="companyName" type="string" required>
+  Your company or business name as it should appear on the invoice.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Your business email address. Must be a valid email.
+</ParamField>
+
+<ParamField body="issueDate" type="string">
+  ISO 8601 date-time of when the invoice is issued. Defaults to now if omitted. Example: `"2024-04-01T00:00:00Z"`.
+</ParamField>
+
+<ParamField body="dueDate" type="string">
+  ISO 8601 date-time of the payment due date. Example: `"2024-04-30T00:00:00Z"`.
+</ParamField>
+
+**Customer details**
+
+<ParamField body="customerName" type="string" required>
+  Full name of the customer receiving the invoice.
+</ParamField>
+
+<ParamField body="customerEmail" type="string" required>
+  Customer's email address. Must be a valid email. Used when sending the invoice by email.
+</ParamField>
+
+<ParamField body="billingAddress" type="string">
+  Customer's street billing address.
+</ParamField>
+
+<ParamField body="city" type="string">
+  Customer's city.
+</ParamField>
+
+<ParamField body="state" type="string">
+  Customer's state or province.
+</ParamField>
+
+<ParamField body="country" type="string">
+  Customer's country.
+</ParamField>
+
+<ParamField body="zipCode" type="string">
+  Customer's postal / zip code.
+</ParamField>
+
+**Tax & discounts (invoice-level)**
+
+When you set `taxType` at the invoice level, it overrides any per-line-item tax settings.
+
+<ParamField body="taxType" type="string">
+  How tax is applied across the invoice. One of: `"none"`, `"percentage"`, `"fixed"`. Defaults to `"none"`.
+</ParamField>
+
+<ParamField body="taxRate" type="number">
+  Tax value. When `taxType` is `"percentage"`, this is the percentage (e.g. `7.5` for 7.5%). When `taxType` is `"fixed"`, this is the flat amount per line item.
+</ParamField>
+
+<ParamField body="discountType" type="string">
+  How the discount is applied. One of: `"none"`, `"percentage"`, `"fixed"`. Defaults to `"none"`.
+</ParamField>
+
+<ParamField body="discount" type="number">
+  Discount value. Interpretation depends on `discountType`.
+</ParamField>
+
+<ParamField body="shippingFee" type="number">
+  Flat shipping fee added to the invoice total.
+</ParamField>
+
+**Other**
+
+<ParamField body="notes" type="string">
+  Optional notes or payment instructions shown on the invoice.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Arbitrary key-value pairs you want to attach to the invoice for your own reference.
+</ParamField>
+
+<ParamField body="checkoutCallbackUrl" type="string">
+  An HTTPS URL Hyparrow will POST to when a checkout-link payment for this invoice changes status (`completed`, `pending`, or `failed`).
+</ParamField>
+
+**Line items**
+
+<ParamField body="lineItems" type="array" required>
+  Array of line item objects. At least one is required.
+
+  <Expandable title="Line item fields">
+    <ParamField body="lineItems[].productId" type="string">
+      UUID of an existing product. When provided, `description` and `unitPrice` are auto-populated from the product. You may still override `unitPrice`.
+    </ParamField>
+    <ParamField body="lineItems[].description" type="string">
+      Description of the line item. Required when `productId` is not provided.
+    </ParamField>
+    <ParamField body="lineItems[].quantity" type="integer" required>
+      Number of units. Must be greater than 0.
+    </ParamField>
+    <ParamField body="lineItems[].unitPrice" type="number">
+      Price per unit. Required when `productId` is not provided. Must be greater than 0.
+    </ParamField>
+    <ParamField body="lineItems[].taxType" type="string">
+      Line-item tax type: `"none"`, `"percentage"`, or `"fixed"`. Only applied when the invoice-level `taxType` is `"none"`.
+    </ParamField>
+    <ParamField body="lineItems[].taxRate" type="number">
+      Line-item tax rate or fixed amount.
+    </ParamField>
+    <ParamField body="lineItems[].discountType" type="string">
+      Line-item discount type: `"none"`, `"percentage"`, or `"fixed"`.
+    </ParamField>
+    <ParamField body="lineItems[].discount" type="number">
+      Line-item discount value.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/invoices/ \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "title": "Web Development Services — Q1 2024",
+    "currency": "NGN",
+    "companyName": "Acme Corp",
+    "email": "billing@acme.com",
+    "issueDate": "2024-04-01T00:00:00Z",
+    "dueDate": "2024-04-30T00:00:00Z",
+    "customerName": "Jane Doe",
+    "customerEmail": "jane@example.com",
+    "billingAddress": "12 Victoria Island",
+    "city": "Lagos",
+    "state": "Lagos",
+    "country": "Nigeria",
+    "taxType": "percentage",
+    "taxRate": 7.5,
+    "discountType": "none",
+    "shippingFee": 0,
+    "notes": "Payment due within 30 days.",
+    "lineItems": [
+      {
+        "description": "Frontend development",
+        "quantity": 1,
+        "unitPrice": 250000
+      },
+      {
+        "description": "API integration",
+        "quantity": 2,
+        "unitPrice": 75000
+      }
+    ]
+  }'
+```
+
+```json Request body
+{
+  "title": "Web Development Services — Q1 2024",
+  "currency": "NGN",
+  "companyName": "Acme Corp",
+  "email": "billing@acme.com",
+  "issueDate": "2024-04-01T00:00:00Z",
+  "dueDate": "2024-04-30T00:00:00Z",
+  "customerName": "Jane Doe",
+  "customerEmail": "jane@example.com",
+  "billingAddress": "12 Victoria Island",
+  "city": "Lagos",
+  "state": "Lagos",
+  "country": "Nigeria",
+  "taxType": "percentage",
+  "taxRate": 7.5,
+  "discountType": "none",
+  "shippingFee": 0,
+  "notes": "Payment due within 30 days.",
+  "lineItems": [
+    {
+      "description": "Frontend development",
+      "quantity": 1,
+      "unitPrice": 250000
+    },
+    {
+      "description": "API integration",
+      "quantity": 2,
+      "unitPrice": 75000
+    }
+  ]
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Invoice created successfully",
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "invoiceNumber": "invoice-hpw-000000001",
+    "title": "Web Development Services — Q1 2024",
+    "currency": "NGN",
+    "companyName": "Acme Corp",
+    "email": "billing@acme.com",
+    "customerName": "Jane Doe",
+    "customerEmail": "jane@example.com",
+    "issueDate": "2024-04-01T00:00:00Z",
+    "dueDate": "2024-04-30T00:00:00Z",
+    "taxType": "percentage",
+    "taxRate": 7.5,
+    "discountType": "none",
+    "discount": 0,
+    "shippingFee": 0,
+    "subTotal": 400000,
+    "taxTotal": 30000,
+    "discountTotal": 0,
+    "totalAmount": 430000,
+    "status": "draft",
+    "lineItems": [
+      {
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "description": "Frontend development",
+        "quantity": 1,
+        "unitPrice": 250000,
+        "taxType": "none",
+        "taxRate": 0,
+        "discountType": "none",
+        "discount": 0
+      },
+      {
+        "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        "description": "API integration",
+        "quantity": 2,
+        "unitPrice": 75000,
+        "taxType": "none",
+        "taxRate": 0,
+        "discountType": "none",
+        "discount": 0
+      }
+    ],
+    "createdAt": "2024-04-01T08:00:00Z",
+    "updatedAt": "2024-04-01T08:00:00Z"
+  }
+}
+```
+
+---
+
+## Add line item
+
+Add a new line item to an existing invoice.
+
+```
+POST /api/v1/invoices/:invoiceId/line-items
+```
+
+### Path parameters
+
+<ParamField path="invoiceId" type="string" required>
+  UUID of the invoice to add the line item to.
+</ParamField>
+
+### Request body
+
+<ParamField body="description" type="string" required>
+  Description of the line item.
+</ParamField>
+
+<ParamField body="quantity" type="integer" required>
+  Number of units. Must be greater than 0.
+</ParamField>
+
+<ParamField body="unitPrice" type="number" required>
+  Price per unit. Must be greater than 0.
+</ParamField>
+
+<ParamField body="taxType" type="string">
+  Tax type for this line item: `"none"`, `"percentage"`, or `"fixed"`. Only applied when the invoice-level `taxType` is `"none"`.
+</ParamField>
+
+<ParamField body="taxRate" type="number">
+  Tax rate or fixed amount for this line item.
+</ParamField>
+
+<ParamField body="discountType" type="string">
+  Discount type for this line item: `"none"`, `"percentage"`, or `"fixed"`.
+</ParamField>
+
+<ParamField body="discount" type="number">
+  Discount value for this line item.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/invoices/3fa85f64-5717-4562-b3fc-2c963f66afa6/line-items \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "description": "Hosting setup fee",
+    "quantity": 1,
+    "unitPrice": 15000
+  }'
+```
+
+```json Request body
+{
+  "description": "Hosting setup fee",
+  "quantity": 1,
+  "unitPrice": 15000
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 201 Created
+{
+  "success": true,
+  "message": "Line item added",
+  "data": {
+    "id": "c3d4e5f6-a7b8-9012-cdef-012345678902",
+    "invoiceId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "description": "Hosting setup fee",
+    "quantity": 1,
+    "unitPrice": 15000,
+    "taxType": "none",
+    "taxRate": 0,
+    "discountType": "none",
+    "discount": 0,
+    "createdAt": "2024-04-02T09:00:00Z",
+    "updatedAt": "2024-04-02T09:00:00Z"
+  }
+}
+```
+
+---
+
+## List invoices
+
+Returns a paginated list of all invoices for your account.
+
+```
+GET /api/v1/invoices/
+```
+
+### Query parameters
+
+<ParamField query="page" type="integer">
+  Page number. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of results per page. Defaults to `20`.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by invoice status. One of: `draft`, `pending`, `paid`, `overdue`, `canceled`.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.hyparrow.com/api/v1/invoices/?page=1&limit=10&status=pending' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "invoiceNumber": "invoice-hpw-000000001",
+      "title": "Web Development Services — Q1 2024",
+      "customerName": "Jane Doe",
+      "customerEmail": "jane@example.com",
+      "totalAmount": 430000,
+      "currency": "NGN",
+      "status": "pending",
+      "dueDate": "2024-04-30T00:00:00Z",
+      "createdAt": "2024-04-01T08:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+## Get invoice
+
+Retrieve a single invoice by its ID.
+
+```
+GET /api/v1/invoices/:invoiceId
+```
+
+### Path parameters
+
+<ParamField path="invoiceId" type="string" required>
+  UUID of the invoice to retrieve.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/invoices/3fa85f64-5717-4562-b3fc-2c963f66afa6 \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "invoiceNumber": "invoice-hpw-000000001",
+    "title": "Web Development Services — Q1 2024",
+    "currency": "NGN",
+    "companyName": "Acme Corp",
+    "email": "billing@acme.com",
+    "customerName": "Jane Doe",
+    "customerEmail": "jane@example.com",
+    "issueDate": "2024-04-01T00:00:00Z",
+    "dueDate": "2024-04-30T00:00:00Z",
+    "taxType": "percentage",
+    "taxRate": 7.5,
+    "subTotal": 400000,
+    "taxTotal": 30000,
+    "discountTotal": 0,
+    "totalAmount": 430000,
+    "status": "pending",
+    "notes": "Payment due within 30 days.",
+    "lineItems": [],
+    "createdAt": "2024-04-01T08:00:00Z",
+    "updatedAt": "2024-04-01T08:00:00Z"
+  }
+}
+```

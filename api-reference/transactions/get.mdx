@@ -1,0 +1,188 @@
+---
+title: "Get Transaction"
+description: "Retrieve the full details of a single transaction by its ID."
+---
+
+## Get transaction
+
+Fetch a complete transaction record by its UUID. The transaction must belong to your account.
+
+```
+GET /api/v1/transactions/:transactionId
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Path parameters
+
+<ParamField path="transactionId" type="string" required>
+  UUID of the transaction to retrieve.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/transactions/3fa85f64-5717-4562-b3fc-2c963f66afa6 \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "clientId": "7e9a1b2c-3d4e-5f60-a7b8-c9d0e1f2a3b4",
+    "customerId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "invoiceId": null,
+    "subscriptionId": null,
+    "productId": null,
+    "receiptId": null,
+    "type": "card_payment",
+    "status": "completed",
+    "amount": 500000,
+    "currency": "NGN",
+    "reference": "TXN-20240401-001",
+    "description": "",
+    "provider": "interswitch",
+    "providerRef": "",
+    "channel": "card",
+    "responseCode": "00",
+    "responseMessage": "Approved by Financial Institution",
+    "interswitchReference": "ISW-TXN-2024042310300001",
+    "senderName": null,
+    "senderAccountNumber": null,
+    "senderBankCode": null,
+    "errorMessage": null,
+    "request": {
+      "customerId": "HYP_abc123def456gh78",
+      "amount": "5000",
+      "currency": "NGN",
+      "transactionRef": "TXN-20240401-001"
+    },
+    "response": {
+      "responseCode": "00",
+      "message": "Approved by Financial Institution",
+      "paymentId": "FBN|WEB|MX26070|23-04-2024|589928|000020"
+    },
+    "metadata": {},
+    "completedAt": "2024-04-23T10:30:00Z",
+    "createdAt": "2024-04-23T10:29:45Z",
+    "updatedAt": "2024-04-23T10:30:00Z"
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="data.id" type="string">
+  Unique transaction UUID.
+</ResponseField>
+
+<ResponseField name="data.clientId" type="string">
+  UUID of the API client that owns this transaction.
+</ResponseField>
+
+<ResponseField name="data.customerId" type="string">
+  UUID of the customer associated with this transaction. `null` if not linked to a customer.
+</ResponseField>
+
+<ResponseField name="data.invoiceId" type="string">
+  UUID of the linked invoice. `null` if this is not an invoice payment.
+</ResponseField>
+
+<ResponseField name="data.subscriptionId" type="string">
+  UUID of the linked subscription. `null` if this is not a subscription payment.
+</ResponseField>
+
+<ResponseField name="data.productId" type="string">
+  UUID of the linked product. `null` if not applicable.
+</ResponseField>
+
+<ResponseField name="data.type" type="string">
+  Transaction type. One of: `virtual_account`, `bank_transfer`, `bill_payment`, `card_payment`, `account_inquiry`, `credit`, `debit`, `invoice_payment`, `product_purchase`, `subscription_payment`, `verification_payment`, `opay_payment`, `ussd_payment`.
+</ResponseField>
+
+<ResponseField name="data.status" type="string">
+  Transaction status: `pending`, `processing`, `completed`, `success`, `failed`, or `canceled`.
+</ResponseField>
+
+<ResponseField name="data.amount" type="integer">
+  Transaction amount in the smallest currency unit (kobo for NGN). Divide by 100 to get naira.
+</ResponseField>
+
+<ResponseField name="data.currency" type="string">
+  3-letter ISO 4217 currency code (e.g. `"NGN"`).
+</ResponseField>
+
+<ResponseField name="data.reference" type="string">
+  Your unique transaction reference.
+</ResponseField>
+
+<ResponseField name="data.provider" type="string">
+  Payment provider that processed the transaction.
+</ResponseField>
+
+<ResponseField name="data.channel" type="string">
+  Payment channel used (e.g. `"card"`, `"virtual_account"`).
+</ResponseField>
+
+<ResponseField name="data.responseCode" type="string">
+  Final processor response code. `"00"` = approved.
+</ResponseField>
+
+<ResponseField name="data.responseMessage" type="string">
+  Human-readable processor response message.
+</ResponseField>
+
+<ResponseField name="data.interswitchReference" type="string">
+  Interswitch's internal reference for the transaction, when applicable.
+</ResponseField>
+
+<ResponseField name="data.request" type="object">
+  Sanitised copy of the original request payload (card data is never stored).
+</ResponseField>
+
+<ResponseField name="data.response" type="object">
+  Raw response received from the payment processor.
+</ResponseField>
+
+<ResponseField name="data.errorMessage" type="string">
+  Error message if the transaction failed. `null` on success.
+</ResponseField>
+
+<ResponseField name="data.senderName" type="string">
+  Sender's name for inbound bank transfers.
+</ResponseField>
+
+<ResponseField name="data.senderAccountNumber" type="string">
+  Sender's account number for inbound bank transfers.
+</ResponseField>
+
+<ResponseField name="data.senderBankCode" type="string">
+  Sender's bank code for inbound bank transfers.
+</ResponseField>
+
+<ResponseField name="data.completedAt" type="string">
+  ISO 8601 timestamp of when the transaction completed. `null` if not yet complete.
+</ResponseField>
+
+<ResponseField name="data.createdAt" type="string">
+  ISO 8601 timestamp of when the transaction was created.
+</ResponseField>
+
+<ResponseField name="data.updatedAt" type="string">
+  ISO 8601 timestamp of the last update.
+</ResponseField>
+
+<ResponseField name="data.metadata" type="object">
+  Arbitrary key-value metadata stored with the transaction.
+</ResponseField>

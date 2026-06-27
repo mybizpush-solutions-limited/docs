@@ -1,0 +1,102 @@
+---
+title: "Payment Status"
+description: "Check the status of a bill payment using its request reference."
+---
+
+Use this endpoint to query the current status of a bill payment. Pass the `requestRef` you submitted when calling [Pay Bill](/api-reference/bills/pay).
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+## Endpoint
+
+```
+GET https://api.hyparrow.com/api/v1/bills/status?reference={requestRef}
+```
+
+## Query parameters
+
+<ParamField query="reference" type="string" required>
+  The `requestRef` you provided when the payment was initiated. This is the unique 13-digit reference generated on your side.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when the status check request succeeds.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Status details for the referenced payment.
+  <Expandable title="data fields">
+    <ResponseField name="responseCode" type="string">
+      Provider response code. `"00"` indicates a completed successful payment.
+    </ResponseField>
+    <ResponseField name="responseDescription" type="string">
+      Human-readable status description (e.g., `Approved`, `Pending`, `Failed`).
+    </ResponseField>
+    <ResponseField name="transactionRef" type="string">
+      The provider's internal transaction reference.
+    </ResponseField>
+    <ResponseField name="requestRef" type="string">
+      The reference you submitted, echoed back for correlation.
+    </ResponseField>
+    <ResponseField name="amount" type="string">
+      The transaction amount in kobo.
+    </ResponseField>
+    <ResponseField name="customerId" type="string">
+      The customer ID used in the payment.
+    </ResponseField>
+    <ResponseField name="customerName" type="string">
+      The customer name associated with the payment.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if the lookup fails. Empty on success.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X GET "https://api.hyparrow.com/api/v1/bills/status?reference=1234567890123" \
+  -H "x-api-key: your_api_key" \
+  -H "x-api-secret: your_api_secret"
+```
+
+</CodeGroup>
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": {
+    "responseCode": "00",
+    "responseDescription": "Approved",
+    "transactionRef": "ISW-TXN-20240115-001234",
+    "requestRef": "1234567890123",
+    "amount": "50000",
+    "customerId": "08012345678",
+    "customerName": "ADA OKAFOR"
+  },
+  "error": ""
+}
+```
+
+### Error response
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "transaction not found"
+}
+```

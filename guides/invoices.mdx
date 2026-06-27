@@ -1,0 +1,346 @@
+---
+title: "Invoices"
+description: "Create professional invoices and collect payment via virtual account, card, USSD, OPay, or crypto."
+---
+
+Invoices let you bill customers with itemized line items, apply taxes and discounts, and collect payment through multiple channels. Hyparrow generates a unique invoice number for every invoice and keeps totals consistent across updates.
+
+## Create an invoice
+
+<Steps>
+  <Step title="Create the invoice">
+    Send a `POST` request with your company details, customer details, and at least one line item. You can include line items inline at creation time or add them individually afterward.
+
+    <ParamField body="title" type="string" required>
+      Internal title for the invoice (e.g. "Q1 Retainer").
+    </ParamField>
+    <ParamField body="currency" type="string" default="USD">
+      ISO 4217 currency code, exactly 3 characters (e.g. `NGN`, `USD`).
+    </ParamField>
+    <ParamField body="companyName" type="string" required>
+      Your company name as it will appear on the invoice.
+    </ParamField>
+    <ParamField body="email" type="string" required>
+      Your company billing email address.
+    </ParamField>
+    <ParamField body="issueDate" type="string">
+      ISO 8601 date-time. Defaults to now if omitted.
+    </ParamField>
+    <ParamField body="dueDate" type="string">
+      ISO 8601 date-time for when payment is due.
+    </ParamField>
+    <ParamField body="customerName" type="string" required>
+      Full name of the customer being billed.
+    </ParamField>
+    <ParamField body="customerEmail" type="string" required>
+      Customer's email address. Required to send the invoice by email.
+    </ParamField>
+    <ParamField body="billingAddress" type="string">
+      Street address of the customer.
+    </ParamField>
+    <ParamField body="city" type="string">
+      City.
+    </ParamField>
+    <ParamField body="state" type="string">
+      State or province.
+    </ParamField>
+    <ParamField body="country" type="string">
+      Country.
+    </ParamField>
+    <ParamField body="zipCode" type="string">
+      Postal/ZIP code.
+    </ParamField>
+    <ParamField body="taxType" type="string">
+      Invoice-level tax mode: `none`, `percentage`, or `fixed`. When set to anything other than `none`, this overrides any line-item tax settings.
+    </ParamField>
+    <ParamField body="taxRate" type="number">
+      Tax value. For `percentage`, supply a percent (e.g. `7.5` for 7.5%). For `fixed`, supply a flat currency amount applied per line item.
+    </ParamField>
+    <ParamField body="discountType" type="string">
+      Invoice-level discount mode: `none`, `percentage`, or `fixed`. Overrides line-item discounts when set.
+    </ParamField>
+    <ParamField body="discount" type="number">
+      Discount value, interpreted according to `discountType`.
+    </ParamField>
+    <ParamField body="shippingFee" type="number">
+      Flat shipping fee added to the invoice total.
+    </ParamField>
+    <ParamField body="notes" type="string">
+      Free-text notes printed at the bottom of the invoice.
+    </ParamField>
+    <ParamField body="metadata" type="object">
+      Arbitrary key-value pairs stored on the invoice. Not shown to customers.
+    </ParamField>
+    <ParamField body="checkoutCallbackUrl" type="string">
+      URL that Hyparrow POSTs to when a checkout-link payment changes status (`completed`, `pending`, or `failed`).
+    </ParamField>
+    <ParamField body="lineItems" type="array" required>
+      Array of line items. At least one is required.
+    </ParamField>
+
+    <CodeGroup>
+
+    ```bash cURL
+    curl --request POST \
+      --url https://api.hyparrow.com/api/v1/invoices/ \
+      --header "x-api-key: your_api_key" \
+      --header "x-api-secret: your_api_secret" \
+      --header "Content-Type: application/json" \
+      --data '{
+        "title": "Web Development Services",
+        "currency": "NGN",
+        "companyName": "Acme Corp",
+        "email": "billing@acme.com",
+        "customerName": "Jane Doe",
+        "customerEmail": "jane@example.com",
+        "billingAddress": "12 Marina Street",
+        "city": "Lagos",
+        "state": "Lagos",
+        "country": "Nigeria",
+        "taxType": "percentage",
+        "taxRate": 7.5,
+        "discountType": "none",
+        "shippingFee": 0,
+        "notes": "Payment due within 14 days.",
+        "lineItems": [
+          {
+            "description": "Frontend development",
+            "quantity": 10,
+            "unitPrice": 50000
+          },
+          {
+            "description": "Hosting setup",
+            "quantity": 1,
+            "unitPrice": 25000
+          }
+        ]
+      }'
+    ```
+
+    ```javascript Node.js
+    const response = await fetch("https://api.hyparrow.com/api/v1/invoices/", {
+      method: "POST",
+      headers: {
+        "x-api-key": "your_api_key",
+        "x-api-secret": "your_api_secret",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "Web Development Services",
+        currency: "NGN",
+        companyName: "Acme Corp",
+        email: "billing@acme.com",
+        customerName: "Jane Doe",
+        customerEmail: "jane@example.com",
+        taxType: "percentage",
+        taxRate: 7.5,
+        lineItems: [
+          { description: "Frontend development", quantity: 10, unitPrice: 50000 },
+          { description: "Hosting setup", quantity: 1, unitPrice: 25000 },
+        ],
+      }),
+    });
+    const { data } = await response.json();
+    ```
+
+    </CodeGroup>
+
+    ```json Response
+    {
+      "success": true,
+      "message": "Invoice created successfully",
+      "data": {
+        "id": "a1b2c3d4-e5f6-...",
+        "invoiceNumber": "invoice-hpw-000000001",
+        "status": "draft",
+        "currency": "NGN",
+        "subTotal": 525000.00,
+        "taxTotal": 39375.00,
+        "discountTotal": 0.00,
+        "totalAmount": 564375.00,
+        "lineItems": []
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Add line items (optional)">
+    Add line items after creation with `POST /api/v1/invoices/:invoiceId/line-items`.
+
+    <ParamField body="description" type="string" required>
+      Description of the product or service.
+    </ParamField>
+    <ParamField body="quantity" type="number" required>
+      Number of units. Must be greater than 0.
+    </ParamField>
+    <ParamField body="unitPrice" type="number" required>
+      Price per unit. Must be greater than 0.
+    </ParamField>
+    <ParamField body="productId" type="string">
+      ID of an existing product. When provided, `description` and `unitPrice` are auto-populated from the product. You may still override `unitPrice` explicitly.
+    </ParamField>
+    <ParamField body="taxType" type="string">
+      Line-item tax mode: `none`, `percentage`, or `fixed`. Only used when the invoice-level `taxType` is `none`.
+    </ParamField>
+    <ParamField body="taxRate" type="number">
+      Line-item tax value.
+    </ParamField>
+    <ParamField body="discountType" type="string">
+      Line-item discount mode: `none`, `percentage`, or `fixed`. Only used when the invoice-level `discountType` is `none`.
+    </ParamField>
+    <ParamField body="discount" type="number">
+      Line-item discount value.
+    </ParamField>
+
+    ```bash cURL
+    curl --request POST \
+      --url https://api.hyparrow.com/api/v1/invoices/a1b2c3d4-.../line-items \
+      --header "x-api-key: your_api_key" \
+      --header "x-api-secret: your_api_secret" \
+      --header "Content-Type: application/json" \
+      --data '{
+        "description": "Domain registration",
+        "quantity": 1,
+        "unitPrice": 15000
+      }'
+    ```
+  </Step>
+
+  <Step title="Generate a virtual account">
+    Create a short-lived virtual account that your customer pays into. Hyparrow automatically marks the invoice as paid when the exact amount clears.
+
+    <ParamField body="expiryMinutes" type="number" required>
+      VA lifetime in minutes. Must be exactly `10`, `15`, or `30`.
+    </ParamField>
+
+    ```bash cURL
+    curl --request POST \
+      --url https://api.hyparrow.com/api/v1/invoices/a1b2c3d4-.../generate-va \
+      --header "x-api-key: your_api_key" \
+      --header "x-api-secret: your_api_secret" \
+      --header "Content-Type: application/json" \
+      --data '{ "expiryMinutes": 30 }'
+    ```
+
+    ```json Response
+    {
+      "success": true,
+      "message": "Virtual account generated — pay the exact amount before it expires",
+      "data": {
+        "accountNumber": "0123456789",
+        "accountName": "Hyparrow / Jane Doe",
+        "bankName": "Wema Bank",
+        "bankCode": "035",
+        "expiresAt": "2025-06-01T12:30:00Z"
+      }
+    }
+    ```
+
+    <Warning>
+      The customer must transfer the exact invoice total before the VA expires. Partial or over-payments are not automatically applied.
+    </Warning>
+  </Step>
+
+  <Step title="Check invoice status">
+    Retrieve the invoice to confirm payment.
+
+    ```bash cURL
+    curl --request GET \
+      --url https://api.hyparrow.com/api/v1/invoices/a1b2c3d4-... \
+      --header "x-api-key: your_api_key" \
+      --header "x-api-secret: your_api_secret"
+    ```
+
+    The `status` field will be one of:
+
+    | Value | Meaning |
+    |-------|---------|
+    | `draft` | Created, not yet sent |
+    | `pending` | Sent to customer, awaiting payment |
+    | `paid` | Payment confirmed |
+    | `overdue` | Due date passed without payment |
+    | `canceled` | Invoice voided |
+  </Step>
+</Steps>
+
+## Download PDF
+
+Returns a PDF binary with `Content-Type: application/pdf`.
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/invoices/a1b2c3d4-.../download \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --output invoice.pdf
+```
+
+## Send by email
+
+Emails the invoice PDF to the customer address on record. The email includes a checkout link.
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/invoices/a1b2c3d4-.../send-email \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+```json Response
+{
+  "success": true,
+  "message": "Invoice emailed to jane@example.com"
+}
+```
+
+<Note>
+  The invoice must have a `customerEmail` set. Requests without one return a 400 error.
+</Note>
+
+## Public checkout
+
+Give customers a hosted payment page — no authentication required on their side.
+
+```
+GET https://api.hyparrow.com/api/v1/checkout/:invoiceId
+```
+
+The checkout page accepts payment via virtual account bank transfer, card, USSD, OPay, and crypto. When payment status changes, Hyparrow POSTs to the `checkoutCallbackUrl` you set on the invoice (if any).
+
+## List invoices
+
+```bash cURL
+curl --request GET \
+  --url "https://api.hyparrow.com/api/v1/invoices/?page=1&limit=20&status=pending" \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+| Query parameter | Type | Default | Description |
+|-----------------|------|---------|-------------|
+| `page` | number | `1` | Page number |
+| `limit` | number | `20` | Results per page |
+| `status` | string | — | Filter by invoice status |
+
+## Receipt
+
+Once an invoice is paid, retrieve or download the branded receipt.
+
+<CodeGroup>
+
+```bash Get receipt JSON
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/invoices/a1b2c3d4-.../receipt \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret"
+```
+
+```bash Download receipt PDF
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/invoices/a1b2c3d4-.../download-receipt \
+  --header "x-api-key: your_api_key" \
+  --header "x-api-secret: your_api_secret" \
+  --output receipt.pdf
+```
+
+</CodeGroup>

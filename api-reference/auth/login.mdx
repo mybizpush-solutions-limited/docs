@@ -1,0 +1,147 @@
+---
+title: "Login"
+description: "Authenticate with your credentials and receive a JWT for subsequent requests."
+---
+
+Use this endpoint to log in to your Hyparrow account. A successful response includes a signed JWT that you pass as a `Bearer` token on authenticated endpoints.
+
+<Info>
+  Your email must be verified before you can log in. If you have not yet verified your email, use the [Verify Email](/api-reference/auth/verify-email) endpoint first.
+</Info>
+
+## Endpoint
+
+```
+POST https://api.hyparrow.com/api/v1/auth/login
+```
+
+## Request body
+
+<ParamField body="email" type="string" required>
+  The email address associated with your account.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Your account password.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` when authentication succeeds.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="data fields">
+    <ResponseField name="token" type="string">
+      A signed JWT valid for 24 hours. Pass this value in the `Authorization` header as `Bearer <token>` on all authenticated requests.
+    </ResponseField>
+    <ResponseField name="user" type="object">
+      <Expandable title="user fields">
+        <ResponseField name="id" type="string">
+          The user's UUID.
+        </ResponseField>
+        <ResponseField name="firstName" type="string">
+          The user's first name.
+        </ResponseField>
+        <ResponseField name="lastName" type="string">
+          The user's last name.
+        </ResponseField>
+        <ResponseField name="email" type="string">
+          The user's email address.
+        </ResponseField>
+        <ResponseField name="country" type="string">
+          ISO 3166-1 alpha-2 country code.
+        </ResponseField>
+        <ResponseField name="city" type="string">
+          The user's city, if set.
+        </ResponseField>
+        <ResponseField name="state" type="string">
+          The user's state or region, if set.
+        </ResponseField>
+        <ResponseField name="postalCode" type="string">
+          The user's postal code, if set.
+        </ResponseField>
+        <ResponseField name="profilePicture" type="string">
+          URL of the user's profile picture, if set.
+        </ResponseField>
+        <ResponseField name="role" type="string">
+          Your account role.
+        </ResponseField>
+        <ResponseField name="accountType" type="string">
+          Either `personal` or `business`.
+        </ResponseField>
+        <ResponseField name="accountStatus" type="string">
+          One of `pending`, `active`, `suspended`, or `deactivated`.
+        </ResponseField>
+        <ResponseField name="kycStatus" type="string">
+          One of `not_started`, `in_progress`, `pending_review`, `approved`, or `rejected`.
+        </ResponseField>
+        <ResponseField name="emailVerified" type="boolean">
+          `true` when the user's email address has been verified.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Using the token
+
+Include the token in the `Authorization` header for all authenticated API calls:
+
+```
+Authorization: Bearer <token>
+```
+
+Tokens expire after **24 hours**. Request a new token by calling this endpoint again.
+
+## Examples
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.hyparrow.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ada.okafor@example.com",
+    "password": "SecurePass123"
+  }'
+```
+
+</CodeGroup>
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkYS5va2Fmb3JAZXhhbXBsZS5jb20iLCJleHAiOjE3MDAwMDAwMDAsImlhdCI6MTY5OTkxMzYwMCwicm9sZSI6InVzZXIiLCJ1c2VySWQiOiJhMWIyYzNkNC1lNWY2LTc4OTAtYWJjZC1lZjEyMzQ1Njc4OTAifQ.signature",
+    "user": {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "firstName": "Ada",
+      "lastName": "Okafor",
+      "email": "ada.okafor@example.com",
+      "country": "NG",
+      "city": "Lagos",
+      "state": "Lagos",
+      "postalCode": "100001",
+      "profilePicture": "",
+      "role": "user",
+      "accountType": "business",
+      "accountStatus": "active",
+      "kycStatus": "not_started",
+      "emailVerified": true
+    }
+  }
+}
+```
+
+### Error response
+
+```json
+{
+  "success": false,
+  "error": "invalid email or password"
+}
+```

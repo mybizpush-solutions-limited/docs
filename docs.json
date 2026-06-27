@@ -1,0 +1,145 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "luma",
+  "name": "Hyparrow",
+  "logo": {
+    "light": "https://media.brand.dev/9f09d8b7-631d-4f7b-9d0a-36589f64a8f4.png",
+    "dark": "https://media.brand.dev/9f09d8b7-631d-4f7b-9d0a-36589f64a8f4.png"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#040404",
+    "light": "#045cfb",
+    "dark": "#040404"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/mybizpush-solutions-limited/hyparrow-api"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/api-keys",
+              "concepts/webhooks",
+              "concepts/transactions"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "guides/bill-payments",
+              "guides/bank-transfers",
+              "guides/card-payments",
+              "guides/virtual-accounts",
+              "guides/ussd-payments",
+              "guides/opay-payments"
+            ]
+          },
+          {
+            "group": "Platform Features",
+            "pages": [
+              "guides/invoices",
+              "guides/subscriptions",
+              "guides/customers",
+              "guides/kyc-verification",
+              "guides/crypto-wallets"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/errors",
+              "reference/idempotency",
+              "reference/rate-limits"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Auth",
+            "pages": [
+              "api-reference/auth/signup",
+              "api-reference/auth/login",
+              "api-reference/auth/verify-email"
+            ]
+          },
+          {
+            "group": "Bill Payments",
+            "pages": [
+              "api-reference/bills/categories",
+              "api-reference/bills/services",
+              "api-reference/bills/validate",
+              "api-reference/bills/pay",
+              "api-reference/bills/status"
+            ]
+          },
+          {
+            "group": "Bank Transfers",
+            "pages": [
+              "api-reference/transfers/banks",
+              "api-reference/transfers/inquiry",
+              "api-reference/transfers/initiate",
+              "api-reference/transfers/status"
+            ]
+          },
+          {
+            "group": "Card Payments",
+            "pages": [
+              "api-reference/card-payments/purchase",
+              "api-reference/card-payments/authenticate-otp",
+              "api-reference/card-payments/status"
+            ]
+          },
+          {
+            "group": "Invoices & Subscriptions",
+            "pages": [
+              "api-reference/invoices/create",
+              "api-reference/invoices/pay",
+              "api-reference/subscriptions/create",
+              "api-reference/subscriptions/pay"
+            ]
+          },
+          {
+            "group": "KYC & Identity",
+            "pages": [
+              "api-reference/kyc/bvn",
+              "api-reference/kyc/nin",
+              "api-reference/kyc/cac",
+              "api-reference/kyc/nuban"
+            ]
+          },
+          {
+            "group": "Customers & Transactions",
+            "pages": [
+              "api-reference/customers/create",
+              "api-reference/customers/virtual-account",
+              "api-reference/transactions/list",
+              "api-reference/transactions/get"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {}
+  }
+}

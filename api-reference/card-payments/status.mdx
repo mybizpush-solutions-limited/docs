@@ -1,0 +1,202 @@
+---
+title: "Payment Status"
+description: "Query the status of a card payment by transaction reference, or list all card transactions for your account."
+---
+
+## Get payment status
+
+Query the current status of a card transaction directly from the payment processor. This endpoint also updates the local transaction record if the processor reports a completed status.
+
+```
+GET /api/v1/card-payments/status
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Query parameters
+
+<ParamField query="transactionRef" type="string" required>
+  The transaction reference you supplied when initiating the payment.
+</ParamField>
+
+<ParamField query="amount" type="string" required>
+  The transaction amount in naira (the same value you submitted at initiation). For example, `"5000"` for ₦5,000.
+</ParamField>
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.hyparrow.com/api/v1/card-payments/status?transactionRef=TXN-20240401-001&amount=5000' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json Success
+{
+  "success": true,
+  "message": "Transaction status retrieved",
+  "data": {
+    "ResponseCode": "00",
+    "ResponseDescription": "Approved by Financial Institution",
+    "Amount": "500000",
+    "TransactionDate": "2024-04-23T10:30:00Z"
+  }
+}
+```
+
+### Response fields
+
+<ResponseField name="success" type="boolean">
+  `true` when the status query was processed successfully.
+</ResponseField>
+
+<ResponseField name="data.ResponseCode" type="string">
+  Processor response code. `"00"` means the transaction was approved and complete.
+</ResponseField>
+
+<ResponseField name="data.ResponseDescription" type="string">
+  Human-readable description of the transaction status from the processor.
+</ResponseField>
+
+<ResponseField name="data.Amount" type="string">
+  Transaction amount in kobo as returned by the processor.
+</ResponseField>
+
+<ResponseField name="data.TransactionDate" type="string">
+  ISO 8601 timestamp of when the transaction was processed.
+</ResponseField>
+
+---
+
+## List card transactions
+
+Returns all card payment transactions associated with your API key client account, ordered by most recent first.
+
+```
+GET /api/v1/card-payments/transactions
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Example request
+
+```bash cURL
+curl --request GET \
+  --url https://api.hyparrow.com/api/v1/card-payments/transactions \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret'
+```
+
+### Example response
+
+```json Success
+{
+  "success": true,
+  "message": "Retrieved 2 transactions",
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "clientId": "7e9a1b2c-3d4e-5f60-a7b8-c9d0e1f2a3b4",
+      "type": "card_payment",
+      "status": "completed",
+      "amount": 500000,
+      "currency": "NGN",
+      "reference": "TXN-20240401-001",
+      "provider": "interswitch",
+      "channel": "card",
+      "responseCode": "00",
+      "responseMessage": "Approved by Financial Institution",
+      "completedAt": "2024-04-23T10:30:00Z",
+      "createdAt": "2024-04-23T10:29:45Z",
+      "updatedAt": "2024-04-23T10:30:00Z"
+    },
+    {
+      "id": "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
+      "clientId": "7e9a1b2c-3d4e-5f60-a7b8-c9d0e1f2a3b4",
+      "type": "card_payment",
+      "status": "failed",
+      "amount": 200000,
+      "currency": "NGN",
+      "reference": "TXN-20240401-002",
+      "provider": "interswitch",
+      "channel": "card",
+      "responseCode": "51",
+      "responseMessage": "Insufficient funds",
+      "createdAt": "2024-04-23T09:15:00Z",
+      "updatedAt": "2024-04-23T09:15:30Z"
+    }
+  ]
+}
+```
+
+### Response fields
+
+<ResponseField name="success" type="boolean">
+  `true` when the list was retrieved successfully.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Indicates how many transactions were returned.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of transaction objects.
+
+  <Expandable title="Transaction object fields">
+    <ResponseField name="id" type="string">
+      Unique transaction UUID.
+    </ResponseField>
+    <ResponseField name="clientId" type="string">
+      UUID of the API client that created the transaction.
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      Always `"card_payment"` for card transactions.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Transaction status: `pending`, `processing`, `completed`, `failed`, or `canceled`.
+    </ResponseField>
+    <ResponseField name="amount" type="integer">
+      Transaction amount in kobo (multiply by 0.01 to get naira).
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      3-letter currency code, e.g. `"NGN"`.
+    </ResponseField>
+    <ResponseField name="reference" type="string">
+      Your unique transaction reference.
+    </ResponseField>
+    <ResponseField name="provider" type="string">
+      Payment provider used to process the transaction.
+    </ResponseField>
+    <ResponseField name="channel" type="string">
+      Payment channel. Always `"card"` for card payments.
+    </ResponseField>
+    <ResponseField name="responseCode" type="string">
+      Final processor response code.
+    </ResponseField>
+    <ResponseField name="responseMessage" type="string">
+      Final processor response message.
+    </ResponseField>
+    <ResponseField name="completedAt" type="string">
+      ISO 8601 timestamp of when the transaction completed. Present only for completed transactions.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp of when the transaction was created.
+    </ResponseField>
+    <ResponseField name="updatedAt" type="string">
+      ISO 8601 timestamp of the last update.
+    </ResponseField>
+  </Expandable>
+</ResponseField>

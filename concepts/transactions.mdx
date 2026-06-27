@@ -1,0 +1,166 @@
+---
+title: "Transactions"
+description: "Understand the transaction lifecycle, statuses, and how to look up any payment."
+---
+
+Every operation that moves money through Hyparrow — bill payments, transfers, card charges, virtual account deposits — creates a transaction record. You can query transactions at any time to check status, reconcile records, or audit activity.
+
+## Transaction statuses
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Request received, waiting for processing |
+| `processing` | Being processed by the payment provider |
+| `completed` | Successfully processed |
+| `success` | Alias for completed (used by some channels) |
+| `failed` | Processing failed — see `errorMessage` for details |
+| `canceled` | Cancelled before completion |
+
+## Transaction types
+
+| Type | Description |
+|------|-------------|
+| `virtual_account` | Inbound payment to a virtual account |
+| `bank_transfer` | Outbound transfer to a bank account |
+| `bill_payment` | Bill payment (airtime, data, utilities, etc.) |
+| `card_payment` | Card purchase |
+| `invoice_payment` | Payment against an invoice |
+| `subscription_payment` | Recurring subscription payment |
+| `opay_payment` | OPay collection |
+| `ussd_payment` | USSD-initiated payment |
+| `verification_payment` | KYC verification API call charge |
+| `credit` | Credit to a wallet or account |
+| `debit` | Debit from a wallet or account |
+
+## Transaction object
+
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "clientId": "c1d2e3f4-...",
+  "customerId": "a1b2c3d4-...",
+  "invoiceId": null,
+  "type": "bill_payment",
+  "status": "completed",
+  "amount": 100000,
+  "currency": "NGN",
+  "reference": "2319123456789",
+  "description": "Airtime purchase - MTN 08012345678",
+  "provider": "interswitch",
+  "providerRef": "ISW-REF-001",
+  "channel": "web",
+  "responseCode": "00",
+  "responseMessage": "Approved",
+  "interswitchReference": "ISW-TXN-12345",
+  "errorMessage": null,
+  "senderName": null,
+  "completedAt": "2026-04-04T10:00:00Z",
+  "createdAt": "2026-04-04T09:59:58Z",
+  "updatedAt": "2026-04-04T10:00:00Z",
+  "metadata": {}
+}
+```
+
+<Note>
+  `amount` is always in **kobo**. Divide by 100 to get naira (e.g., `100000` = ₦1,000).
+</Note>
+
+## List transactions
+
+```bash
+curl "https://api.hyparrow.com/api/v1/transactions/?page=1&limit=20" \
+  -H "X-API-Key: pk_abc123..." \
+  -H "X-API-Secret: sk_xyz789..."
+```
+
+**Query parameters**
+
+<ParamField query="type" type="string">
+  Filter by transaction type (e.g., `bill_payment`, `bank_transfer`).
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by status (e.g., `completed`, `failed`).
+</ParamField>
+
+<ParamField query="dateFrom" type="string">
+  Start date for range filter (ISO 8601, e.g., `2026-01-01T00:00:00Z`).
+</ParamField>
+
+<ParamField query="dateTo" type="string">
+  End date for range filter (ISO 8601).
+</ParamField>
+
+<ParamField query="page" type="integer">
+  Page number. Defaults to 1.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Results per page. Defaults to 20.
+</ParamField>
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "transactions": [...],
+    "total": 142,
+    "page": 1,
+    "limit": 20
+  }
+}
+```
+
+## Get a single transaction
+
+```bash
+curl "https://api.hyparrow.com/api/v1/transactions/3fa85f64-5717-4562-b3fc-2c963f66afa6" \
+  -H "X-API-Key: pk_abc123..." \
+  -H "X-API-Secret: sk_xyz789..."
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "type": "bill_payment",
+    "status": "completed",
+    "amount": 100000,
+    "currency": "NGN",
+    "reference": "2319123456789",
+    ...
+  }
+}
+```
+
+## Handling failures
+
+When a transaction has `status: "failed"`, check the `errorMessage` and `responseCode` fields:
+
+```json
+{
+  "status": "failed",
+  "responseCode": "Z5",
+  "responseMessage": "Customer validation failed",
+  "errorMessage": "Invalid customer ID for this biller"
+}
+```
+
+For bill payments, you can also re-query the status directly using the payment reference:
+
+```bash
+curl "https://api.hyparrow.com/api/v1/bills/status?reference=2319123456789" \
+  -H "X-API-Key: pk_abc123..." \
+  -H "X-API-Secret: sk_xyz789..."
+```
+
+## Reconciliation tips
+
+<Tip>
+  - Store the `reference` you generate. It's the most reliable way to look up any transaction.
+  - For virtual account deposits, the transaction is created when the webhook fires — polling before the webhook arrives will show `pending`.
+  - Use `dateFrom` / `dateTo` filters with daily or hourly windows for efficient reconciliation batches.
+</Tip>

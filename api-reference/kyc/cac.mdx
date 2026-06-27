@@ -1,0 +1,523 @@
+---
+title: "CAC Verification"
+description: "Verify companies registered with the Corporate Affairs Commission (CAC), and look up TIN, driver's license, and international passport records."
+---
+
+CAC verification endpoints let you confirm the registration details of Nigerian businesses. Additional endpoints on this page cover TIN, driver's license, and passport verification. Each call consumes your KYC balance or quota.
+
+## Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+---
+
+## Zeeh — Basic CAC lookup
+
+Return basic registration details for a company by RC number.
+
+```
+POST /api/v1/kyc/zee/cac/basic
+```
+
+### Request body
+
+<ParamField body="rcNumber" type="string" required>
+  The CAC Registration Number (RC Number) of the company.
+</ParamField>
+
+<ParamField body="companyName" type="string" required>
+  The registered company name. Used to validate the lookup.
+</ParamField>
+
+<ParamField body="companyType" type="string" required>
+  The type of company registration. Example values: `"RC"` (private limited), `"BN"` (business name), `"IT"` (incorporated trustee).
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/zee/cac/basic \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "rcNumber": "1234567",
+    "companyName": "Acme Nigeria Limited",
+    "companyType": "RC"
+  }'
+```
+
+```json Request body
+{
+  "rcNumber": "1234567",
+  "companyName": "Acme Nigeria Limited",
+  "companyType": "RC"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "rcNumber": "1234567",
+    "companyName": "ACME NIGERIA LIMITED",
+    "companyType": "Private Limited Company",
+    "registrationDate": "2015-03-12",
+    "address": "1 Business District, Lagos",
+    "status": "Active"
+  }
+}
+```
+
+---
+
+## Zeeh — Advanced CAC lookup
+
+Returns extended company details including directors and shareholders.
+
+```
+POST /api/v1/kyc/zee/cac/advanced
+```
+
+### Request body
+
+<ParamField body="rcNumber" type="string" required>
+  The CAC RC Number.
+</ParamField>
+
+<ParamField body="companyName" type="string" required>
+  The registered company name.
+</ParamField>
+
+<ParamField body="companyType" type="string" required>
+  Company registration type (e.g. `"RC"`, `"BN"`, `"IT"`).
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/zee/cac/advanced \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "rcNumber": "1234567",
+    "companyName": "Acme Nigeria Limited",
+    "companyType": "RC"
+  }'
+```
+
+```json Request body
+{
+  "rcNumber": "1234567",
+  "companyName": "Acme Nigeria Limited",
+  "companyType": "RC"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "rcNumber": "1234567",
+    "companyName": "ACME NIGERIA LIMITED",
+    "status": "Active",
+    "directors": [
+      { "name": "John Smith", "nationality": "Nigerian" }
+    ],
+    "shareholders": [
+      { "name": "Jane Doe", "shares": 50000 }
+    ]
+  }
+}
+```
+
+---
+
+## Interswitch — CAC lookup by company name
+
+Search the CAC database for a company by name.
+
+```
+POST /api/v1/kyc/switch/cac
+```
+
+### Request body
+
+<ParamField body="companyName" type="string" required>
+  Company name to search for in the CAC database.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/cac \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "companyName": "Acme Nigeria" }'
+```
+
+```json Request body
+{ "companyName": "Acme Nigeria" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "rcNumber": "1234567",
+        "companyName": "ACME NIGERIA LIMITED",
+        "status": "Active"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Interswitch — CAC shareholders
+
+Retrieve the list of shareholders for a company by RC number.
+
+```
+POST /api/v1/kyc/switch/cac/shareholders
+```
+
+### Request body
+
+<ParamField body="rcNumber" type="string" required>
+  The CAC RC Number of the company.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/cac/shareholders \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "rcNumber": "1234567" }'
+```
+
+```json Request body
+{ "rcNumber": "1234567" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "rcNumber": "1234567",
+    "shareholders": [
+      { "name": "Jane Doe", "shares": 50000, "nationality": "Nigerian" }
+    ]
+  }
+}
+```
+
+---
+
+## Interswitch — CAC secretary
+
+Retrieve the company secretary details for a company.
+
+```
+POST /api/v1/kyc/switch/cac/secretary
+```
+
+### Request body
+
+<ParamField body="rcNumber" type="string" required>
+  The CAC RC Number of the company.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/cac/secretary \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "rcNumber": "1234567" }'
+```
+
+```json Request body
+{ "rcNumber": "1234567" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "rcNumber": "1234567",
+    "secretary": {
+      "name": "Michael Brown",
+      "address": "5 Law Chambers, Lagos"
+    }
+  }
+}
+```
+
+---
+
+## Interswitch — CAC director
+
+Retrieve the directors for a company.
+
+```
+POST /api/v1/kyc/switch/cac/director
+```
+
+### Request body
+
+<ParamField body="rcNumber" type="string" required>
+  The CAC RC Number of the company.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/cac/director \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "rcNumber": "1234567" }'
+```
+
+```json Request body
+{ "rcNumber": "1234567" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "rcNumber": "1234567",
+    "directors": [
+      {
+        "name": "John Smith",
+        "nationality": "Nigerian",
+        "dateOfAppointment": "2015-03-12"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Interswitch — TIN verification
+
+Verify a Tax Identification Number (TIN) issued by FIRS.
+
+```
+POST /api/v1/kyc/switch/tin
+```
+
+### Request body
+
+<ParamField body="tin" type="string" required>
+  The Tax Identification Number to verify.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/tin \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "tin": "12345678-0001" }'
+```
+
+```json Request body
+{ "tin": "12345678-0001" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "tin": "12345678-0001",
+    "taxpayerName": "ACME NIGERIA LIMITED",
+    "taxOffice": "Lagos Island",
+    "status": "Active"
+  }
+}
+```
+
+---
+
+## Interswitch — Driver's license verification
+
+Verify a Nigerian driver's license number.
+
+```
+POST /api/v1/kyc/switch/drivers-license
+```
+
+### Request body
+
+<ParamField body="licenseNumber" type="string" required>
+  The driver's license number to verify.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/drivers-license \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{ "licenseNumber": "AAB00000AA00" }'
+```
+
+```json Request body
+{ "licenseNumber": "AAB00000AA00" }
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "licenseNumber": "AAB00000AA00",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "dateOfBirth": "1990-01-15",
+    "issueDate": "2020-03-01",
+    "expiryDate": "2025-03-01",
+    "stateOfIssue": "Lagos"
+  }
+}
+```
+
+---
+
+## Interswitch — International passport verification
+
+Verify a Nigerian international passport.
+
+```
+POST /api/v1/kyc/switch/passport
+```
+
+### Request body
+
+<ParamField body="passportNumber" type="string" required>
+  The passport number to verify.
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  The passport holder's last name.
+</ParamField>
+
+<ParamField body="dob" type="string" required>
+  The passport holder's date of birth in `YYYY-MM-DD` format.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/kyc/switch/passport \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "passportNumber": "A12345678",
+    "lastName": "Doe",
+    "dob": "1990-01-15"
+  }'
+```
+
+```json Request body
+{
+  "passportNumber": "A12345678",
+  "lastName": "Doe",
+  "dob": "1990-01-15"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json 200 OK
+{
+  "success": true,
+  "data": {
+    "passportNumber": "A12345678",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "dateOfBirth": "1990-01-15",
+    "issueDate": "2019-06-01",
+    "expiryDate": "2029-06-01",
+    "nationality": "Nigerian"
+  }
+}
+```

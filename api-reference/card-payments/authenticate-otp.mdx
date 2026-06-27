@@ -1,0 +1,171 @@
+---
+title: "Authenticate OTP"
+description: "Complete a Verve or Mastercard card payment by submitting the OTP sent to the cardholder's registered phone, or request a new OTP."
+---
+
+When a card purchase returns `responseCode: "T0"`, the transaction requires OTP authentication. The cardholder receives a one-time password on their registered phone number. Submit that OTP here to complete the payment.
+
+## Authenticate OTP
+
+```
+POST /api/v1/card-payments/authenticate-otp
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Request body
+
+<ParamField body="paymentId" type="string" required>
+  The `paymentId` returned in the `data` object from the [Initiate Payment](/api-reference/card-payments/purchase) response.
+</ParamField>
+
+<ParamField body="otp" type="string" required>
+  The one-time password entered by the cardholder.
+</ParamField>
+
+<ParamField body="transactionId" type="string" required>
+  The `transactionId` returned in the `data` object from the [Initiate Payment](/api-reference/card-payments/purchase) response.
+</ParamField>
+
+<ParamField body="eciFlag" type="string">
+  The `eciFlag` returned from the initiate-payment response. Pass this through exactly as received. Optional but recommended.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/card-payments/authenticate-otp \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "paymentId": "PAY-2024042310300001",
+    "otp": "123456",
+    "transactionId": "1234567890",
+    "eciFlag": "07"
+  }'
+```
+
+```json Request body
+{
+  "paymentId": "PAY-2024042310300001",
+  "otp": "123456",
+  "transactionId": "1234567890",
+  "eciFlag": "07"
+}
+```
+
+</CodeGroup>
+
+### Example responses
+
+<CodeGroup>
+
+```json Success
+{
+  "success": true,
+  "message": "OTP authenticated successfully",
+  "data": {
+    "responseCode": "00",
+    "message": "Approved by Financial Institution",
+    "amount": "500000",
+    "transactionDate": "2024-04-23T10:30:00Z"
+  }
+}
+```
+
+```json Failed OTP
+{
+  "success": false,
+  "message": "OTP authentication failed",
+  "error": "Invalid OTP"
+}
+```
+
+</CodeGroup>
+
+### Response fields
+
+<ResponseField name="success" type="boolean">
+  `true` when authentication was processed by the API.
+</ResponseField>
+
+<ResponseField name="data.responseCode" type="string">
+  `"00"` indicates the payment was approved. Any other code means the payment failed.
+</ResponseField>
+
+<ResponseField name="data.message" type="string">
+  Human-readable outcome from the processor.
+</ResponseField>
+
+---
+
+## Resend OTP
+
+Triggers a new OTP to be sent to the cardholder's registered phone number. Use this if the original OTP expired or was not received.
+
+```
+POST /api/v1/card-payments/resend-otp
+```
+
+### Authentication
+
+```
+x-api-key: your_api_key
+x-api-secret: your_api_secret
+```
+
+### Request body
+
+<ParamField body="paymentId" type="string" required>
+  The `paymentId` from the original [Initiate Payment](/api-reference/card-payments/purchase) response.
+</ParamField>
+
+<ParamField body="transactionId" type="string" required>
+  The `transactionId` from the original [Initiate Payment](/api-reference/card-payments/purchase) response.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.hyparrow.com/api/v1/card-payments/resend-otp \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: your_api_key' \
+  --header 'x-api-secret: your_api_secret' \
+  --data '{
+    "paymentId": "PAY-2024042310300001",
+    "transactionId": "1234567890"
+  }'
+```
+
+```json Request body
+{
+  "paymentId": "PAY-2024042310300001",
+  "transactionId": "1234567890"
+}
+```
+
+</CodeGroup>
+
+### Example response
+
+```json Success
+{
+  "success": true,
+  "message": "OTP resent successfully",
+  "data": {
+    "message": "OTP sent to registered phone number"
+  }
+}
+```
